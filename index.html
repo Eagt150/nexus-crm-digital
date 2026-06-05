@@ -1,0 +1,1437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NexusCRM — Agencia Digital</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+  /* ── RESET & BASE ──────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg:        #0A0A0F;
+    --bg2:       #12121A;
+    --bg3:       #1A1A28;
+    --border:    rgba(124,58,237,.25);
+    --purple:    #7C3AED;
+    --purple2:   #A855F7;
+    --pink:      #EC4899;
+    --cyan:      #06B6D4;
+    --green:     #10B981;
+    --yellow:    #F59E0B;
+    --red:       #EF4444;
+    --text:      #E2E8F0;
+    --text2:     #94A3B8;
+    --text3:     #475569;
+    --glass:     rgba(124,58,237,.08);
+    --glass2:    rgba(255,255,255,.04);
+    --glow:      0 0 40px rgba(124,58,237,.35);
+    --radius:    16px;
+    --radius-sm: 10px;
+    --trans:     .25s cubic-bezier(.4,0,.2,1);
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── ANIMATED BG GRID ──────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(124,58,237,.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(124,58,237,.06) 1px, transparent 1px);
+    background-size: 48px 48px;
+    animation: gridPulse 8s ease-in-out infinite;
+  }
+  @keyframes gridPulse {
+    0%,100% { opacity:.6 } 50% { opacity:1 }
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    top: -20%; left: 50%;
+    transform: translateX(-50%);
+    width: 900px; height: 600px;
+    background: radial-gradient(ellipse, rgba(124,58,237,.18) 0%, transparent 70%);
+    z-index: 0; pointer-events: none;
+    animation: orb 12s ease-in-out infinite;
+  }
+  @keyframes orb {
+    0%,100% { transform: translateX(-50%) scale(1); }
+    50%      { transform: translateX(-45%) scale(1.15); }
+  }
+
+  /* ── LAYOUT ────────────────────────────────────────────────── */
+  .layout { display: flex; min-height: 100vh; position: relative; z-index: 1; }
+
+  /* ── SIDEBAR ───────────────────────────────────────────────── */
+  .sidebar {
+    width: 260px; flex-shrink: 0;
+    background: rgba(18,18,26,.85);
+    backdrop-filter: blur(24px);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    padding: 28px 16px 24px;
+    position: sticky; top: 0; height: 100vh;
+    overflow-y: auto;
+  }
+  .logo {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 8px 32px;
+    border-bottom: 1px solid var(--border);
+  }
+  .logo-icon {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: linear-gradient(135deg, var(--purple), var(--pink));
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; box-shadow: 0 0 20px rgba(124,58,237,.5);
+    flex-shrink: 0;
+  }
+  .logo-text { font-size: 18px; font-weight: 800; letter-spacing: -.3px; }
+  .logo-text span { background: linear-gradient(90deg, var(--purple2), var(--pink)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+  .logo-sub { font-size: 10px; color: var(--text2); font-weight: 500; letter-spacing: .5px; text-transform: uppercase; }
+
+  .nav-section { margin-top: 24px; }
+  .nav-label { font-size: 10px; color: var(--text3); font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; padding: 0 8px; margin-bottom: 8px; }
+  .nav-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 11px 12px; border-radius: var(--radius-sm);
+    cursor: pointer; transition: all var(--trans);
+    color: var(--text2); font-size: 14px; font-weight: 500;
+    text-decoration: none; margin-bottom: 2px;
+    border: 1px solid transparent; position: relative;
+  }
+  .nav-item:hover { background: var(--glass2); color: var(--text); }
+  .nav-item.active {
+    background: linear-gradient(135deg, rgba(124,58,237,.2), rgba(168,85,247,.1));
+    color: var(--purple2); border-color: var(--border);
+    box-shadow: var(--glow);
+  }
+  .nav-item.active::before {
+    content: '';
+    position: absolute; left: 0; top: 50%; transform: translateY(-50%);
+    width: 3px; height: 60%; border-radius: 0 4px 4px 0;
+    background: linear-gradient(var(--purple), var(--pink));
+  }
+  .nav-icon { font-size: 18px; width: 22px; text-align: center; }
+  .badge {
+    margin-left: auto; background: var(--purple); color: #fff;
+    font-size: 10px; font-weight: 700; padding: 2px 7px;
+    border-radius: 20px; min-width: 20px; text-align: center;
+  }
+  .badge.green { background: var(--green); }
+  .badge.red   { background: var(--red); }
+
+  .sidebar-footer {
+    margin-top: auto; padding-top: 20px; border-top: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .avatar {
+    width: 36px; height: 36px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--purple), var(--pink));
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 14px; flex-shrink: 0;
+  }
+  .avatar-info .name { font-size: 13px; font-weight: 600; }
+  .avatar-info .role { font-size: 11px; color: var(--text2); }
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--green);
+    margin-left: auto; box-shadow: 0 0 8px var(--green);
+    animation: pulse 2s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:.4 } }
+
+  /* ── MAIN ──────────────────────────────────────────────────── */
+  .main { flex: 1; overflow-y: auto; }
+
+  /* ── TOPBAR ────────────────────────────────────────────────── */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,10,15,.8); backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 32px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .topbar-title { font-size: 20px; font-weight: 800; flex: 1; }
+  .topbar-title span { color: var(--text2); font-weight: 400; font-size: 14px; margin-left: 8px; }
+  .search-bar {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--glass2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 9px 16px; width: 260px;
+    transition: all var(--trans);
+  }
+  .search-bar:focus-within { border-color: var(--purple); box-shadow: 0 0 0 3px rgba(124,58,237,.15); }
+  .search-bar input { background: none; border: none; outline: none; color: var(--text); font-size: 14px; width: 100%; }
+  .search-bar input::placeholder { color: var(--text3); }
+  .btn {
+    padding: 9px 20px; border-radius: 10px; border: none; cursor: pointer;
+    font-size: 14px; font-weight: 600; transition: all var(--trans);
+    font-family: inherit;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--purple), var(--purple2));
+    color: #fff; box-shadow: 0 0 20px rgba(124,58,237,.4);
+  }
+  .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 0 30px rgba(124,58,237,.6); }
+  .btn-ghost { background: var(--glass2); border: 1px solid var(--border); color: var(--text2); }
+  .btn-ghost:hover { border-color: var(--purple); color: var(--text); }
+  .notif-btn {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: var(--glass2); border: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; position: relative; transition: all var(--trans);
+    font-size: 18px;
+  }
+  .notif-btn:hover { border-color: var(--purple); }
+  .notif-btn .dot { position: absolute; top:8px; right:8px; width:7px; height:7px; border-radius:50%; background:var(--red); box-shadow:0 0 6px var(--red); }
+
+  /* ── PAGES ─────────────────────────────────────────────────── */
+  .page { display: none; padding: 32px; animation: fadeIn .3s ease; }
+  .page.active { display: block; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:none; } }
+
+  /* ── CARDS ─────────────────────────────────────────────────── */
+  .card {
+    background: rgba(26,26,40,.7);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    transition: all var(--trans);
+  }
+  .card:hover { border-color: rgba(124,58,237,.5); transform: translateY(-2px); }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .card-title { font-size: 15px; font-weight: 700; }
+  .card-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  /* ── GRID LAYOUTS ──────────────────────────────────────────── */
+  .grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 20px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 20px; }
+  .grid-2-1 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+
+  /* ── KPI CARDS ─────────────────────────────────────────────── */
+  .kpi-card {
+    background: rgba(26,26,40,.7);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 22px 24px;
+    position: relative; overflow: hidden;
+    transition: all var(--trans);
+  }
+  .kpi-card::before {
+    content: ''; position: absolute; top:-40px; right:-40px;
+    width: 130px; height: 130px; border-radius: 50%;
+    opacity: .12;
+  }
+  .kpi-card.purple::before { background: var(--purple); }
+  .kpi-card.pink::before   { background: var(--pink);   }
+  .kpi-card.cyan::before   { background: var(--cyan);   }
+  .kpi-card.green::before  { background: var(--green);  }
+  .kpi-card:hover { border-color: rgba(124,58,237,.5); transform: translateY(-3px); box-shadow: var(--glow); }
+  .kpi-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; margin-bottom: 16px;
+  }
+  .kpi-icon.purple { background: rgba(124,58,237,.2); }
+  .kpi-icon.pink   { background: rgba(236,72,153,.2);  }
+  .kpi-icon.cyan   { background: rgba(6,182,212,.2);   }
+  .kpi-icon.green  { background: rgba(16,185,129,.2);  }
+  .kpi-value { font-size: 30px; font-weight: 800; letter-spacing: -1px; }
+  .kpi-label { font-size: 13px; color: var(--text2); margin-top: 4px; }
+  .kpi-change { font-size: 12px; font-weight: 600; margin-top: 10px; display: flex; align-items: center; gap: 4px; }
+  .kpi-change.up   { color: var(--green); }
+  .kpi-change.down { color: var(--red);   }
+
+  /* ── TABLE ─────────────────────────────────────────────────── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  thead tr { border-bottom: 1px solid var(--border); }
+  th { padding: 12px 16px; text-align: left; font-size: 11px; font-weight: 700; color: var(--text3); text-transform: uppercase; letter-spacing: .8px; }
+  td { padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,.04); }
+  tbody tr { transition: all var(--trans); }
+  tbody tr:hover { background: var(--glass2); }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .chip {
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600;
+  }
+  .chip.green  { background: rgba(16,185,129,.15);  color: var(--green); }
+  .chip.yellow { background: rgba(245,158,11,.15);  color: var(--yellow); }
+  .chip.red    { background: rgba(239,68,68,.15);   color: var(--red);  }
+  .chip.purple { background: rgba(124,58,237,.15);  color: var(--purple2); }
+  .chip.cyan   { background: rgba(6,182,212,.15);   color: var(--cyan); }
+  .chip.pink   { background: rgba(236,72,153,.15);  color: var(--pink); }
+  .chip::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+
+  /* ── AVATAR ROW ────────────────────────────────────────────── */
+  .user-row { display: flex; align-items: center; gap: 10px; }
+  .user-row .av { width:34px;height:34px;border-radius:50%; display:flex;align-items:center;justify-content:center; font-size:12px;font-weight:800; flex-shrink:0; }
+  .user-row .av.a { background:linear-gradient(135deg,#7C3AED,#EC4899); }
+  .user-row .av.b { background:linear-gradient(135deg,#06B6D4,#7C3AED); }
+  .user-row .av.c { background:linear-gradient(135deg,#10B981,#06B6D4); }
+  .user-row .av.d { background:linear-gradient(135deg,#F59E0B,#EF4444); }
+  .user-row .av.e { background:linear-gradient(135deg,#EC4899,#F59E0B); }
+  .user-row .un { font-size:14px;font-weight:600; }
+  .user-row .ue { font-size:12px;color:var(--text2); }
+
+  /* ── BAR CHART ─────────────────────────────────────────────── */
+  .bar-chart { display: flex; flex-direction: column; gap: 14px; }
+  .bar-row { display: flex; align-items: center; gap: 12px; }
+  .bar-label { font-size: 13px; color: var(--text2); width: 80px; flex-shrink: 0; }
+  .bar-track { flex: 1; height: 8px; background: var(--bg3); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; position: relative; }
+  .bar-fill::after { content:''; position:absolute;inset:0; background:linear-gradient(90deg,transparent,rgba(255,255,255,.15)); }
+  .bar-val { font-size: 13px; font-weight: 700; width: 48px; text-align: right; }
+
+  /* ── MINI CHART (SVG SPARKLINE) ────────────────────────────── */
+  .sparkline { width: 100%; height: 80px; }
+
+  /* ── PIPELINE ──────────────────────────────────────────────── */
+  .pipeline { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; }
+  .pipeline-col { }
+  .pipeline-header {
+    padding: 10px 12px; border-radius: 10px 10px 0 0;
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .pipeline-header.p1 { background:rgba(124,58,237,.2); color:var(--purple2); }
+  .pipeline-header.p2 { background:rgba(6,182,212,.2);  color:var(--cyan); }
+  .pipeline-header.p3 { background:rgba(245,158,11,.2); color:var(--yellow); }
+  .pipeline-header.p4 { background:rgba(236,72,153,.2); color:var(--pink); }
+  .pipeline-header.p5 { background:rgba(16,185,129,.2); color:var(--green); }
+  .pipeline-body { background:var(--glass2); border:1px solid var(--border); border-top:none; border-radius:0 0 10px 10px; padding:10px; min-height:120px; }
+  .deal-card {
+    background: rgba(26,26,40,.9); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; font-size: 13px;
+    transition: all var(--trans); cursor: pointer;
+  }
+  .deal-card:hover { border-color: var(--purple); transform: translateY(-1px); }
+  .deal-name { font-weight: 600; }
+  .deal-val { color: var(--green); font-weight: 700; font-size: 12px; margin-top: 2px; }
+  .deal-company { color: var(--text2); font-size: 11px; }
+
+  /* ── PRODUCT CARDS ─────────────────────────────────────────── */
+  .product-card {
+    background: rgba(26,26,40,.7); border: 1px solid var(--border);
+    border-radius: var(--radius); overflow: hidden; transition: all var(--trans);
+  }
+  .product-card:hover { border-color: rgba(124,58,237,.5); transform: translateY(-4px); box-shadow: var(--glow); }
+  .product-img {
+    height: 160px; display: flex; align-items: center; justify-content: center;
+    font-size: 64px; position: relative;
+  }
+  .product-img.g1 { background: linear-gradient(135deg,rgba(124,58,237,.3),rgba(236,72,153,.2)); }
+  .product-img.g2 { background: linear-gradient(135deg,rgba(6,182,212,.3),rgba(124,58,237,.2)); }
+  .product-img.g3 { background: linear-gradient(135deg,rgba(16,185,129,.3),rgba(6,182,212,.2)); }
+  .product-img.g4 { background: linear-gradient(135deg,rgba(245,158,11,.3),rgba(236,72,153,.2)); }
+  .product-img.g5 { background: linear-gradient(135deg,rgba(239,68,68,.3),rgba(245,158,11,.2)); }
+  .product-img.g6 { background: linear-gradient(135deg,rgba(168,85,247,.3),rgba(16,185,129,.2)); }
+  .prod-body { padding: 18px; }
+  .prod-cat { font-size: 11px; font-weight: 700; color: var(--purple2); text-transform: uppercase; letter-spacing: .6px; }
+  .prod-name { font-size: 15px; font-weight: 700; margin: 6px 0 4px; }
+  .prod-desc { font-size: 13px; color: var(--text2); line-height: 1.5; }
+  .prod-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--border); }
+  .prod-price { font-size: 20px; font-weight: 800; color: var(--purple2); }
+  .prod-sales { font-size: 12px; color: var(--text2); }
+  .btn-sm { padding: 7px 14px; font-size: 12px; font-weight: 600; border-radius: 8px; border: none; cursor: pointer; font-family: inherit; }
+  .btn-sm-primary { background: linear-gradient(135deg,var(--purple),var(--purple2)); color:#fff; }
+
+  /* ── SOCIAL CARDS ──────────────────────────────────────────── */
+  .social-platform {
+    display: flex; align-items: center; gap: 12px;
+    padding: 14px; background: var(--glass2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); margin-bottom: 10px; transition: all var(--trans);
+  }
+  .social-platform:hover { border-color: rgba(124,58,237,.5); }
+  .soc-icon { width:42px;height:42px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0; }
+  .soc-info { flex:1; }
+  .soc-name { font-size:14px;font-weight:700; }
+  .soc-stat { font-size:12px;color:var(--text2); }
+  .soc-num { font-size:18px;font-weight:800;color:var(--purple2); }
+
+  /* ── LEAD CARD ─────────────────────────────────────────────── */
+  .lead-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px; background: var(--glass2); border: 1px solid var(--border);
+    border-radius: var(--radius-sm); margin-bottom: 8px; transition: all var(--trans);
+  }
+  .lead-item:hover { border-color: rgba(124,58,237,.5); background: var(--glass); }
+  .lead-source { width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0; }
+  .lead-info { flex:1; }
+  .lead-name { font-size:13px;font-weight:700; }
+  .lead-detail { font-size:11px;color:var(--text2); }
+
+  /* ── STATS ROW ─────────────────────────────────────────────── */
+  .stats-row { display: flex; gap: 32px; padding: 20px 0; border-bottom: 1px solid var(--border); }
+  .stat-item { text-align:center; }
+  .stat-num { font-size:28px;font-weight:800; background:linear-gradient(135deg,var(--purple2),var(--pink)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+  .stat-lbl { font-size:12px;color:var(--text2);margin-top:2px; }
+
+  /* ── SECTION DIVIDER ───────────────────────────────────────── */
+  .section-title { font-size: 18px; font-weight: 800; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+  .section-title::after { content:''; flex:1; height:1px; background: linear-gradient(90deg,var(--border),transparent); }
+  .mt-20 { margin-top: 20px; }
+  .mt-32 { margin-top: 32px; }
+
+  /* ── ACTIVITY FEED ─────────────────────────────────────────── */
+  .activity-item { display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.04); }
+  .activity-item:last-child { border-bottom:none; }
+  .act-dot { width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0; }
+  .act-dot.p { background:rgba(124,58,237,.2); }
+  .act-dot.c { background:rgba(6,182,212,.2); }
+  .act-dot.g { background:rgba(16,185,129,.2); }
+  .act-dot.r { background:rgba(239,68,68,.2); }
+  .act-dot.y { background:rgba(245,158,11,.2); }
+  .act-text { font-size:13px;line-height:1.5; }
+  .act-text strong { font-weight:700; }
+  .act-time { font-size:11px;color:var(--text3);margin-top:3px; }
+
+  /* ── AUTOMATION ────────────────────────────────────────────── */
+  .automation-item {
+    display:flex;align-items:center;gap:16px;
+    padding:16px;background:var(--glass2);border:1px solid var(--border);
+    border-radius:var(--radius-sm);margin-bottom:10px;transition:all var(--trans);
+  }
+  .automation-item:hover { border-color:rgba(124,58,237,.5); }
+  .auto-icon { width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0; }
+  .auto-info { flex:1; }
+  .auto-name { font-size:14px;font-weight:700; }
+  .auto-desc { font-size:12px;color:var(--text2); }
+  .toggle { width:44px;height:24px;background:var(--bg3);border-radius:99px;position:relative;cursor:pointer;transition:all var(--trans);flex-shrink:0; }
+  .toggle.on { background:linear-gradient(135deg,var(--purple),var(--purple2)); }
+  .toggle::after { content:'';position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:#fff;transition:all var(--trans); }
+  .toggle.on::after { left:23px; }
+
+  /* ── AI PANEL ──────────────────────────────────────────────── */
+  .ai-card {
+    background: linear-gradient(135deg,rgba(124,58,237,.15),rgba(236,72,153,.08));
+    border: 1px solid rgba(124,58,237,.4); border-radius: var(--radius);
+    padding: 24px; position: relative; overflow: hidden;
+  }
+  .ai-card::before {
+    content:'✦'; position:absolute;top:16px;right:20px;font-size:32px;
+    color:var(--purple); opacity:.3; animation:spin 8s linear infinite;
+  }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .ai-msg { background:rgba(0,0,0,.3);border-radius:10px;padding:12px 16px;font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:12px; }
+  .ai-input { display:flex;gap:10px; }
+  .ai-input input { flex:1;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:var(--text);font-size:13px;font-family:inherit;outline:none; }
+  .ai-input input:focus { border-color:var(--purple); }
+
+  /* ── DONUT CHART ───────────────────────────────────────────── */
+  .donut-wrap { display:flex;align-items:center;gap:24px; }
+  .donut-legend { display:flex;flex-direction:column;gap:10px; }
+  .legend-item { display:flex;align-items:center;gap:8px;font-size:13px; }
+  .legend-dot { width:10px;height:10px;border-radius:3px;flex-shrink:0; }
+
+  /* ── SCROLLBAR ─────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width:6px; height:6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius:99px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--purple); }
+
+  /* ── NOTIFICATION BADGE ────────────────────────────────────── */
+  .count-badge { display:inline-block;padding:1px 8px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(124,58,237,.2);color:var(--purple2); }
+
+  /* ── RESPONSIVE HINTS ──────────────────────────────────────── */
+  @media (max-width:1200px) {
+    .grid-4 { grid-template-columns:repeat(2,1fr); }
+    .pipeline { grid-template-columns:repeat(3,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+  <!-- ══════════════════════════ SIDEBAR ══════════════════════ -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-text">Nexus<span>CRM</span></div>
+        <div class="logo-sub">Agencia Digital</div>
+      </div>
+    </div>
+
+    <nav class="nav-section">
+      <div class="nav-label">Principal</div>
+      <a class="nav-item active" onclick="showPage('dashboard',this)">
+        <span class="nav-icon">⊞</span> Dashboard
+      </a>
+      <a class="nav-item" onclick="showPage('clientes',this)">
+        <span class="nav-icon">👥</span> Clientes
+        <span class="badge">248</span>
+      </a>
+      <a class="nav-item" onclick="showPage('pipeline',this)">
+        <span class="nav-icon">📊</span> Pipeline de Ventas
+        <span class="badge green">12</span>
+      </a>
+    </nav>
+
+    <nav class="nav-section">
+      <div class="nav-label">E-Commerce</div>
+      <a class="nav-item" onclick="showPage('productos',this)">
+        <span class="nav-icon">📦</span> Productos Digitales
+      </a>
+      <a class="nav-item" onclick="showPage('pedidos',this)">
+        <span class="nav-icon">🛒</span> Pedidos
+        <span class="badge red">5</span>
+      </a>
+    </nav>
+
+    <nav class="nav-section">
+      <div class="nav-label">Social & Leads</div>
+      <a class="nav-item" onclick="showPage('social',this)">
+        <span class="nav-icon">📡</span> Redes Sociales
+      </a>
+      <a class="nav-item" onclick="showPage('leads',this)">
+        <span class="nav-icon">🎯</span> Captación de Leads
+        <span class="badge">34</span>
+      </a>
+    </nav>
+
+    <nav class="nav-section">
+      <div class="nav-label">Herramientas</div>
+      <a class="nav-item" onclick="showPage('automatizacion',this)">
+        <span class="nav-icon">⚙️</span> Automatización
+      </a>
+      <a class="nav-item" onclick="showPage('analitica',this)">
+        <span class="nav-icon">📈</span> Analítica & BI
+      </a>
+      <a class="nav-item" onclick="showPage('ia',this)">
+        <span class="nav-icon">🤖</span> Asistente IA
+        <span class="badge" style="background:linear-gradient(135deg,#7C3AED,#EC4899)">NEW</span>
+      </a>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="avatar">ED</div>
+      <div class="avatar-info">
+        <div class="name">Edison Gómez</div>
+        <div class="role">Admin</div>
+      </div>
+      <div class="status-dot"></div>
+    </div>
+  </aside>
+
+  <!-- ══════════════════════════ MAIN ═════════════════════════ -->
+  <main class="main">
+
+    <!-- ── TOPBAR ── -->
+    <div class="topbar">
+      <div class="topbar-title" id="pageTitle">Dashboard <span>/ Vista general</span></div>
+      <div class="search-bar">
+        <span>🔍</span>
+        <input type="text" placeholder="Buscar clientes, leads, productos…">
+      </div>
+      <div class="notif-btn">🔔<div class="dot"></div></div>
+      <button class="btn btn-primary" id="topbarBtn" onclick="handleTopBtn()">+ Nuevo</button>
+    </div>
+
+    <!-- ════════════════ PAGE: DASHBOARD ════════════════════════ -->
+    <div class="page active" id="page-dashboard">
+
+      <!-- KPIs -->
+      <div class="grid-4">
+        <div class="kpi-card purple">
+          <div class="kpi-icon purple">💰</div>
+          <div class="kpi-value">$84,320</div>
+          <div class="kpi-label">Ingresos este mes</div>
+          <div class="kpi-change up">▲ 24.6% vs mes anterior</div>
+        </div>
+        <div class="kpi-card cyan">
+          <div class="kpi-icon cyan">👥</div>
+          <div class="kpi-value">248</div>
+          <div class="kpi-label">Clientes activos</div>
+          <div class="kpi-change up">▲ 12 nuevos esta semana</div>
+        </div>
+        <div class="kpi-card pink">
+          <div class="kpi-icon pink">🎯</div>
+          <div class="kpi-value">1,342</div>
+          <div class="kpi-label">Leads captados</div>
+          <div class="kpi-change up">▲ 38.2% conversión</div>
+        </div>
+        <div class="kpi-card green">
+          <div class="kpi-icon green">🛒</div>
+          <div class="kpi-value">$19,780</div>
+          <div class="kpi-label">Ventas digitales</div>
+          <div class="kpi-change up">▲ 15.9% vs semana pasada</div>
+        </div>
+      </div>
+
+      <!-- Charts row -->
+      <div class="grid-2-1 mt-32">
+        <!-- Ingresos -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Evolución de Ingresos</div>
+              <div class="card-sub">Últimos 12 meses</div>
+            </div>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-ghost btn-sm" style="padding:6px 12px;font-size:12px;">Mes</button>
+              <button class="btn btn-primary btn-sm" style="padding:6px 12px;font-size:12px;">Año</button>
+            </div>
+          </div>
+          <svg class="sparkline" viewBox="0 0 600 100" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="gr1" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#7C3AED" stop-opacity=".4"/>
+                <stop offset="100%" stop-color="#7C3AED" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <polygon points="0,100 0,75 50,65 100,55 150,60 200,40 250,45 300,30 350,35 400,20 450,25 500,10 550,15 600,8 600,100" fill="url(#gr1)"/>
+            <polyline points="0,75 50,65 100,55 150,60 200,40 250,45 300,30 350,35 400,20 450,25 500,10 550,15 600,8" fill="none" stroke="#7C3AED" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="600" cy="8" r="5" fill="#A855F7"/>
+          </svg>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--text3);margin-top:8px;">
+            <span>Ene</span><span>Feb</span><span>Mar</span><span>Abr</span><span>May</span><span>Jun</span><span>Jul</span><span>Ago</span><span>Sep</span><span>Oct</span><span>Nov</span><span>Dic</span>
+          </div>
+        </div>
+
+        <!-- Donut -->
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <div class="card-title">Canales de Venta</div>
+              <div class="card-sub">Distribución actual</div>
+            </div>
+          </div>
+          <div class="donut-wrap">
+            <svg width="120" height="120" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" fill="none" stroke="var(--bg3)" stroke-width="18"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#7C3AED" stroke-width="18"
+                stroke-dasharray="188 126" stroke-dashoffset="-31" stroke-linecap="round"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#EC4899" stroke-width="18"
+                stroke-dasharray="75 239" stroke-dashoffset="-219" stroke-linecap="round"/>
+              <circle cx="60" cy="60" r="50" fill="none" stroke="#06B6D4" stroke-width="18"
+                stroke-dasharray="50 264" stroke-dashoffset="-294" stroke-linecap="round"/>
+              <text x="60" y="55" text-anchor="middle" fill="white" font-size="16" font-weight="800">60%</text>
+              <text x="60" y="70" text-anchor="middle" fill="#94A3B8" font-size="9">Digital</text>
+            </svg>
+            <div class="donut-legend">
+              <div class="legend-item"><div class="legend-dot" style="background:#7C3AED"></div>E-commerce <strong style="margin-left:auto;padding-left:12px">60%</strong></div>
+              <div class="legend-item"><div class="legend-dot" style="background:#EC4899"></div>Social Media <strong style="margin-left:auto;padding-left:12px">24%</strong></div>
+              <div class="legend-item"><div class="legend-dot" style="background:#06B6D4"></div>Directo <strong style="margin-left:auto;padding-left:12px">16%</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Recent activity + Top clients -->
+      <div class="grid-2 mt-20">
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Actividad Reciente</div>
+            <span class="count-badge">10 nuevas</span>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot p">💰</div>
+            <div><div class="act-text"><strong>Laura Pérez</strong> completó compra de "Pack SEO Pro"</div><div class="act-time">hace 4 minutos</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot c">📡</div>
+            <div><div class="act-text">Nuevo lead desde <strong>Instagram Ads</strong> → Carlos V.</div><div class="act-time">hace 18 minutos</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot g">✅</div>
+            <div><div class="act-text">Deal <strong>"Consultoría 6 meses"</strong> cerrado — $4,800</div><div class="act-time">hace 1 hora</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot y">🤖</div>
+            <div><div class="act-text">Automatización <strong>"Follow-up día 3"</strong> ejecutada para 23 leads</div><div class="act-time">hace 2 horas</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot r">⚠️</div>
+            <div><div class="act-text"><strong>Pago fallido</strong> — renovación de Marta G. — tarjeta caducada</div><div class="act-time">hace 3 horas</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Top Clientes</div>
+            <a style="font-size:13px;color:var(--purple2);cursor:pointer;">Ver todos →</a>
+          </div>
+          <div class="bar-chart">
+            <div class="bar-row">
+              <div class="bar-label">Laura P.</div>
+              <div class="bar-track"><div class="bar-fill" style="width:90%;background:linear-gradient(90deg,#7C3AED,#A855F7)"></div></div>
+              <div class="bar-val" style="color:var(--purple2)">$9,200</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Javier M.</div>
+              <div class="bar-track"><div class="bar-fill" style="width:74%;background:linear-gradient(90deg,#06B6D4,#7C3AED)"></div></div>
+              <div class="bar-val" style="color:var(--cyan)">$7,580</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Ana Torres</div>
+              <div class="bar-track"><div class="bar-fill" style="width:60%;background:linear-gradient(90deg,#EC4899,#7C3AED)"></div></div>
+              <div class="bar-val" style="color:var(--pink)">$6,100</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Carlos V.</div>
+              <div class="bar-track"><div class="bar-fill" style="width:44%;background:linear-gradient(90deg,#10B981,#06B6D4)"></div></div>
+              <div class="bar-val" style="color:var(--green)">$4,480</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Sofía R.</div>
+              <div class="bar-track"><div class="bar-fill" style="width:30%;background:linear-gradient(90deg,#F59E0B,#EC4899)"></div></div>
+              <div class="bar-val" style="color:var(--yellow)">$3,050</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PAGE: CLIENTES ═════════════════════════ -->
+    <div class="page" id="page-clientes">
+
+      <div class="stats-row">
+        <div class="stat-item"><div class="stat-num">248</div><div class="stat-lbl">Total clientes</div></div>
+        <div class="stat-item"><div class="stat-num">186</div><div class="stat-lbl">Activos</div></div>
+        <div class="stat-item"><div class="stat-num">34</div><div class="stat-lbl">Nuevos este mes</div></div>
+        <div class="stat-item"><div class="stat-num">$340</div><div class="stat-lbl">LTV promedio</div></div>
+      </div>
+
+      <div class="card mt-20">
+        <div class="card-header">
+          <div class="card-title">Base de Clientes</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn btn-ghost btn-sm" style="font-size:12px;padding:7px 14px;">Exportar CSV</button>
+            <button class="btn btn-primary btn-sm" onclick="alert('Formulario de nuevo cliente')">+ Agregar cliente</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Empresa</th>
+                <th>Estado</th>
+                <th>Origen</th>
+                <th>LTV</th>
+                <th>Último contacto</th>
+                <th>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><div class="user-row"><div class="av a">LP</div><div><div class="un">Laura Pérez</div><div class="ue">laura@brandstudio.co</div></div></div></td>
+                <td>Brand Studio</td>
+                <td><span class="chip green">Activo</span></td>
+                <td><span class="chip purple">Instagram</span></td>
+                <td style="font-weight:700;color:var(--green)">$9,200</td>
+                <td style="color:var(--text2)">Hoy, 10:42</td>
+                <td><button class="btn-sm btn-sm-primary">Ver perfil</button></td>
+              </tr>
+              <tr>
+                <td><div class="user-row"><div class="av b">JM</div><div><div class="un">Javier Mora</div><div class="ue">javier@digitalink.es</div></div></div></td>
+                <td>Digital Ink</td>
+                <td><span class="chip green">Activo</span></td>
+                <td><span class="chip cyan">LinkedIn</span></td>
+                <td style="font-weight:700;color:var(--green)">$7,580</td>
+                <td style="color:var(--text2)">Ayer, 15:30</td>
+                <td><button class="btn-sm btn-sm-primary">Ver perfil</button></td>
+              </tr>
+              <tr>
+                <td><div class="user-row"><div class="av c">AT</div><div><div class="un">Ana Torres</div><div class="ue">ana@pixellab.io</div></div></div></td>
+                <td>Pixel Lab</td>
+                <td><span class="chip yellow">En proceso</span></td>
+                <td><span class="chip pink">TikTok</span></td>
+                <td style="font-weight:700;color:var(--yellow)">$6,100</td>
+                <td style="color:var(--text2)">hace 2 días</td>
+                <td><button class="btn-sm btn-sm-primary">Ver perfil</button></td>
+              </tr>
+              <tr>
+                <td><div class="user-row"><div class="av d">CV</div><div><div class="un">Carlos Vera</div><div class="ue">carlos@futuremkt.com</div></div></div></td>
+                <td>Future Mkt</td>
+                <td><span class="chip green">Activo</span></td>
+                <td><span class="chip purple">Meta Ads</span></td>
+                <td style="font-weight:700;color:var(--green)">$4,480</td>
+                <td style="color:var(--text2)">hace 3 días</td>
+                <td><button class="btn-sm btn-sm-primary">Ver perfil</button></td>
+              </tr>
+              <tr>
+                <td><div class="user-row"><div class="av e">SR</div><div><div class="un">Sofía Ramos</div><div class="ue">sofia@creativos.mx</div></div></div></td>
+                <td>Creativos MX</td>
+                <td><span class="chip red">Inactivo</span></td>
+                <td><span class="chip cyan">Google Ads</span></td>
+                <td style="font-weight:700;color:var(--text2)">$3,050</td>
+                <td style="color:var(--text2)">hace 2 sem</td>
+                <td><button class="btn-sm btn-sm-primary">Ver perfil</button></td>
+              </tr>
+              <tr>
+                <td><div class="user-row"><div class="av a">MG</div><div><div class="un">Marta Gil</div><div class="ue">marta@nextbrand.eu</div></div></div></td>
+                <td>Next Brand</td>
+                <td><span class="chip yellow">En proceso</span></td>
+                <td><span class="chip green">Orgánico</span></td>
+                <td style="font-weight:700;color:var(--yellow)">$2,800</td>
+                <td style="color:var(--text2)">hace 1 sem</td>
+                <td><button class="btn-sm btn-sm-primary">Ver perfil</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PAGE: PIPELINE ═════════════════════════ -->
+    <div class="page" id="page-pipeline">
+
+      <div class="stats-row">
+        <div class="stat-item"><div class="stat-num">$128K</div><div class="stat-lbl">Valor total pipeline</div></div>
+        <div class="stat-item"><div class="stat-num">47</div><div class="stat-lbl">Deals activos</div></div>
+        <div class="stat-item"><div class="stat-num">38%</div><div class="stat-lbl">Tasa de cierre</div></div>
+        <div class="stat-item"><div class="stat-num">18 días</div><div class="stat-lbl">Ciclo de venta promedio</div></div>
+      </div>
+
+      <div class="section-title mt-32">Pipeline Kanban</div>
+
+      <div class="pipeline">
+        <div class="pipeline-col">
+          <div class="pipeline-header p1">Prospecto <span class="badge" style="background:rgba(124,58,237,.3);color:#A855F7">12</span></div>
+          <div class="pipeline-body">
+            <div class="deal-card"><div class="deal-name">Agencia Creativa MX</div><div class="deal-company">Laura M.</div><div class="deal-val">$1,200</div></div>
+            <div class="deal-card"><div class="deal-name">Studio Visual Pro</div><div class="deal-company">Pedro R.</div><div class="deal-val">$3,500</div></div>
+            <div class="deal-card"><div class="deal-name">Inno Brand</div><div class="deal-company">Sara T.</div><div class="deal-val">$800</div></div>
+          </div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-header p2">Contactado <span class="badge" style="background:rgba(6,182,212,.3);color:#06B6D4">9</span></div>
+          <div class="pipeline-body">
+            <div class="deal-card"><div class="deal-name">Digital First Agency</div><div class="deal-company">Juan C.</div><div class="deal-val">$6,000</div></div>
+            <div class="deal-card"><div class="deal-name">E-commerce Masters</div><div class="deal-company">Lucia V.</div><div class="deal-val">$2,400</div></div>
+          </div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-header p3">Propuesta <span class="badge" style="background:rgba(245,158,11,.3);color:#F59E0B">7</span></div>
+          <div class="pipeline-body">
+            <div class="deal-card"><div class="deal-name">Media Hub LATAM</div><div class="deal-company">Andrés P.</div><div class="deal-val">$12,000</div></div>
+            <div class="deal-card"><div class="deal-name">Growth Hackers SL</div><div class="deal-company">Valeria K.</div><div class="deal-val">$8,500</div></div>
+            <div class="deal-card"><div class="deal-name">TechAds Spain</div><div class="deal-company">Marcos F.</div><div class="deal-val">$4,200</div></div>
+          </div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-header p4">Negociación <span class="badge" style="background:rgba(236,72,153,.3);color:#EC4899">5</span></div>
+          <div class="pipeline-body">
+            <div class="deal-card"><div class="deal-name">Nexo Digital</div><div class="deal-company">Rosa M.</div><div class="deal-val">$18,000</div></div>
+            <div class="deal-card"><div class="deal-name">Brandlab Europe</div><div class="deal-company">Tom H.</div><div class="deal-val">$9,600</div></div>
+          </div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-header p5">Cerrado ✓ <span class="badge" style="background:rgba(16,185,129,.3);color:#10B981">14</span></div>
+          <div class="pipeline-body">
+            <div class="deal-card"><div class="deal-name">Spark Agency</div><div class="deal-company">Isabel F.</div><div class="deal-val" style="color:var(--green)">$24,000 ✓</div></div>
+            <div class="deal-card"><div class="deal-name">Pixel Factory</div><div class="deal-company">David A.</div><div class="deal-val" style="color:var(--green)">$11,200 ✓</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PAGE: PRODUCTOS ════════════════════════ -->
+    <div class="page" id="page-productos">
+
+      <div class="stats-row">
+        <div class="stat-item"><div class="stat-num">24</div><div class="stat-lbl">Productos activos</div></div>
+        <div class="stat-item"><div class="stat-num">$19,780</div><div class="stat-lbl">Ventas este mes</div></div>
+        <div class="stat-item"><div class="stat-num">843</div><div class="stat-lbl">Unidades vendidas</div></div>
+        <div class="stat-item"><div class="stat-num">4.8 ★</div><div class="stat-lbl">Rating promedio</div></div>
+      </div>
+
+      <div class="section-title mt-32">Catálogo de Productos Digitales</div>
+
+      <div class="grid-3">
+        <div class="product-card">
+          <div class="product-img g1">🎓</div>
+          <div class="prod-body">
+            <div class="prod-cat">Curso Online</div>
+            <div class="prod-name">SEO Mastery 2026</div>
+            <div class="prod-desc">Domina el posicionamiento web con IA, Core Web Vitals y estrategias avanzadas de contenido.</div>
+            <div class="prod-footer">
+              <div><div class="prod-price">$197</div><div class="prod-sales">312 ventas · ⭐ 4.9</div></div>
+              <button class="btn-sm btn-sm-primary">Gestionar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product-card">
+          <div class="product-img g2">📱</div>
+          <div class="prod-body">
+            <div class="prod-cat">Membresía</div>
+            <div class="prod-name">Social Media Club</div>
+            <div class="prod-desc">Acceso mensual a plantillas, estrategias y sesiones en vivo de redes sociales.</div>
+            <div class="prod-footer">
+              <div><div class="prod-price">$47/mes</div><div class="prod-sales">186 activos · ⭐ 4.8</div></div>
+              <button class="btn-sm btn-sm-primary">Gestionar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product-card">
+          <div class="product-img g3">🤖</div>
+          <div class="prod-body">
+            <div class="prod-cat">Toolkit Digital</div>
+            <div class="prod-name">Pack IA para Negocios</div>
+            <div class="prod-desc">50+ prompts profesionales, flujos de automatización y plantillas con inteligencia artificial.</div>
+            <div class="prod-footer">
+              <div><div class="prod-price">$97</div><div class="prod-sales">224 ventas · ⭐ 4.7</div></div>
+              <button class="btn-sm btn-sm-primary">Gestionar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product-card">
+          <div class="product-img g4">📊</div>
+          <div class="prod-body">
+            <div class="prod-cat">Consultoría</div>
+            <div class="prod-name">Estrategia Digital 360</div>
+            <div class="prod-desc">Sesión 1-a-1 de 2h para definir tu estrategia digital completa con roadmap personalizado.</div>
+            <div class="prod-footer">
+              <div><div class="prod-price">$380</div><div class="prod-sales">41 vendidas · ⭐ 5.0</div></div>
+              <button class="btn-sm btn-sm-primary">Gestionar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product-card">
+          <div class="product-img g5">✍️</div>
+          <div class="prod-body">
+            <div class="prod-cat">Template Pack</div>
+            <div class="prod-name">Copy que Convierte</div>
+            <div class="prod-desc">100 plantillas de copywriting para emails, anuncios, landing pages y redes sociales.</div>
+            <div class="prod-footer">
+              <div><div class="prod-price">$67</div><div class="prod-sales">157 ventas · ⭐ 4.8</div></div>
+              <button class="btn-sm btn-sm-primary">Gestionar</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product-card">
+          <div class="product-img g6">🎯</div>
+          <div class="prod-body">
+            <div class="prod-cat">Masterclass</div>
+            <div class="prod-name">Ads Pro: Meta & Google</div>
+            <div class="prod-desc">Aprende a crear campañas de pago rentables desde cero hasta escalar a 5 cifras.</div>
+            <div class="prod-footer">
+              <div><div class="prod-price">$147</div><div class="prod-sales">98 ventas · ⭐ 4.9</div></div>
+              <button class="btn-sm btn-sm-primary">Gestionar</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PAGE: PEDIDOS ══════════════════════════ -->
+    <div class="page" id="page-pedidos">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-title">Pedidos Recientes</div>
+          <span class="chip red">5 pendientes</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr><th>#Pedido</th><th>Cliente</th><th>Producto</th><th>Importe</th><th>Estado</th><th>Fecha</th><th></th></tr>
+            </thead>
+            <tbody>
+              <tr><td style="font-weight:700;color:var(--purple2)">#NX-4421</td><td><div class="user-row"><div class="av a">LP</div><div><div class="un">Laura Pérez</div></div></div></td><td>SEO Mastery 2026</td><td style="font-weight:700;color:var(--green)">$197</td><td><span class="chip green">Completado</span></td><td style="color:var(--text2)">05/06/2026</td><td><button class="btn-sm btn-sm-primary">Ver</button></td></tr>
+              <tr><td style="font-weight:700;color:var(--purple2)">#NX-4420</td><td><div class="user-row"><div class="av b">JM</div><div><div class="un">Javier Mora</div></div></div></td><td>Pack IA para Negocios</td><td style="font-weight:700;color:var(--green)">$97</td><td><span class="chip yellow">Procesando</span></td><td style="color:var(--text2)">05/06/2026</td><td><button class="btn-sm btn-sm-primary">Ver</button></td></tr>
+              <tr><td style="font-weight:700;color:var(--purple2)">#NX-4419</td><td><div class="user-row"><div class="av c">AT</div><div><div class="un">Ana Torres</div></div></div></td><td>Social Media Club</td><td style="font-weight:700;color:var(--green)">$47</td><td><span class="chip green">Completado</span></td><td style="color:var(--text2)">04/06/2026</td><td><button class="btn-sm btn-sm-primary">Ver</button></td></tr>
+              <tr><td style="font-weight:700;color:var(--purple2)">#NX-4418</td><td><div class="user-row"><div class="av d">MG</div><div><div class="un">Marta Gil</div></div></div></td><td>Copy que Convierte</td><td style="font-weight:700;color:var(--red)">$67</td><td><span class="chip red">Pago fallido</span></td><td style="color:var(--text2)">04/06/2026</td><td><button class="btn-sm btn-sm-primary">Ver</button></td></tr>
+              <tr><td style="font-weight:700;color:var(--purple2)">#NX-4417</td><td><div class="user-row"><div class="av e">SR</div><div><div class="un">Sofía Ramos</div></div></div></td><td>Estrategia Digital 360</td><td style="font-weight:700;color:var(--green)">$380</td><td><span class="chip green">Completado</span></td><td style="color:var(--text2)">03/06/2026</td><td><button class="btn-sm btn-sm-primary">Ver</button></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PAGE: SOCIAL MEDIA ═════════════════════ -->
+    <div class="page" id="page-social">
+
+      <div class="grid-2 mt-20" style="margin-top:0">
+        <!-- Plataformas -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Plataformas Conectadas</div>
+            <button class="btn btn-ghost btn-sm" style="font-size:12px;padding:7px 14px;">+ Conectar</button>
+          </div>
+          <div class="social-platform">
+            <div class="soc-icon" style="background:linear-gradient(135deg,#E1306C,#833AB4)">📸</div>
+            <div class="soc-info">
+              <div class="soc-name">Instagram</div>
+              <div class="soc-stat">@nexusagencia · 24,800 seguidores</div>
+            </div>
+            <div><div class="soc-num">+842</div><div style="font-size:11px;color:var(--green)">esta semana</div></div>
+          </div>
+          <div class="social-platform">
+            <div class="soc-icon" style="background:linear-gradient(135deg,#1877F2,#0A66C2)">💼</div>
+            <div class="soc-info">
+              <div class="soc-name">LinkedIn</div>
+              <div class="soc-stat">NexusCRM Agency · 8,420 conexiones</div>
+            </div>
+            <div><div class="soc-num">+214</div><div style="font-size:11px;color:var(--green)">esta semana</div></div>
+          </div>
+          <div class="social-platform">
+            <div class="soc-icon" style="background:linear-gradient(135deg,#000,#333)">🎵</div>
+            <div class="soc-info">
+              <div class="soc-name">TikTok</div>
+              <div class="soc-stat">@nexusdigital · 52,100 seguidores</div>
+            </div>
+            <div><div class="soc-num">+3,240</div><div style="font-size:11px;color:var(--green)">esta semana</div></div>
+          </div>
+          <div class="social-platform">
+            <div class="soc-icon" style="background:linear-gradient(135deg,#1DA1F2,#0A66C2)">🐦</div>
+            <div class="soc-info">
+              <div class="soc-name">X (Twitter)</div>
+              <div class="soc-stat">@nexuscrm · 6,780 seguidores</div>
+            </div>
+            <div><div class="soc-num">+98</div><div style="font-size:11px;color:var(--text2)">esta semana</div></div>
+          </div>
+        </div>
+
+        <!-- Posts programados -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Posts Programados</div>
+            <button class="btn btn-primary btn-sm" onclick="alert('Editor de contenido')">+ Crear post</button>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot p">📸</div>
+            <div><div class="act-text"><strong>Instagram Story</strong> — "Lanzamiento Pack IA 2026"</div><div class="act-time">Hoy 18:00 · Alcance est. 4,200</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot c">💼</div>
+            <div><div class="act-text"><strong>LinkedIn Post</strong> — "5 errores en marketing digital"</div><div class="act-time">Mañana 09:00 · Alcance est. 2,800</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot g">🎵</div>
+            <div><div class="act-text"><strong>TikTok Video</strong> — "Tutorial CRM en 60 seg"</div><div class="act-time">07/06 20:00 · Alcance est. 18,000</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="act-dot y">📸</div>
+            <div><div class="act-text"><strong>Instagram Reel</strong> — "Antes vs Después con NexusCRM"</div><div class="act-time">08/06 17:00 · Alcance est. 9,600</div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Engagement stats -->
+      <div class="card mt-20">
+        <div class="card-header"><div class="card-title">Métricas de Engagement — Últimos 30 días</div></div>
+        <div class="grid-4">
+          <div style="text-align:center;padding:16px;background:var(--glass2);border-radius:10px;">
+            <div style="font-size:26px;font-weight:800;color:var(--purple2)">248K</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:4px">Impresiones</div>
+            <div style="font-size:11px;color:var(--green);margin-top:4px">▲ 34%</div>
+          </div>
+          <div style="text-align:center;padding:16px;background:var(--glass2);border-radius:10px;">
+            <div style="font-size:26px;font-weight:800;color:var(--cyan)">18,420</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:4px">Interacciones</div>
+            <div style="font-size:11px;color:var(--green);margin-top:4px">▲ 21%</div>
+          </div>
+          <div style="text-align:center;padding:16px;background:var(--glass2);border-radius:10px;">
+            <div style="font-size:26px;font-weight:800;color:var(--pink)">7.4%</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:4px">Tasa de engagement</div>
+            <div style="font-size:11px;color:var(--green);margin-top:4px">▲ 2.1pp</div>
+          </div>
+          <div style="text-align:center;padding:16px;background:var(--glass2);border-radius:10px;">
+            <div style="font-size:26px;font-weight:800;color:var(--green)">4,280</div>
+            <div style="font-size:12px;color:var(--text2);margin-top:4px">Clicks a bio/link</div>
+            <div style="font-size:11px;color:var(--green);margin-top:4px">▲ 48%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PAGE: LEADS ════════════════════════════ -->
+    <div class="page" id="page-leads">
+
+      <div class="stats-row">
+        <div class="stat-item"><div class="stat-num">1,342</div><div class="stat-lbl">Leads totales</div></div>
+        <div class="stat-item"><div class="stat-num">34</div><div class="stat-lbl">Nuevos hoy</div></div>
+        <div class="stat-item"><div class="stat-num">38.2%</div><div class="stat-lbl">Tasa de conversión</div></div>
+        <div class="stat-item"><div class="stat-num">$14.80</div><div class="stat-lbl">Costo por lead</div></div>
+      </div>
+
+      <div class="grid-2 mt-32">
+        <!-- Leads recientes -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Leads Recientes</div>
+            <span class="count-badge">34 hoy</span>
+          </div>
+          <div class="lead-item">
+            <div class="lead-source" style="background:linear-gradient(135deg,#E1306C,#833AB4)">📸</div>
+            <div class="lead-info">
+              <div class="lead-name">María Fernández</div>
+              <div class="lead-detail">Instagram Ads · Interés: SEO Mastery · hace 8 min</div>
+            </div>
+            <span class="chip yellow">Nuevo</span>
+          </div>
+          <div class="lead-item">
+            <div class="lead-source" style="background:linear-gradient(135deg,#000,#333)">🎵</div>
+            <div class="lead-info">
+              <div class="lead-name">Roberto Salinas</div>
+              <div class="lead-detail">TikTok Bio · Interés: Pack IA · hace 22 min</div>
+            </div>
+            <span class="chip yellow">Nuevo</span>
+          </div>
+          <div class="lead-item">
+            <div class="lead-source" style="background:linear-gradient(135deg,#1877F2,#0A66C2)">💼</div>
+            <div class="lead-info">
+              <div class="lead-name">Patricia Ruiz</div>
+              <div class="lead-detail">LinkedIn Form · Interés: Consultoría · hace 45 min</div>
+            </div>
+            <span class="chip purple">En seguimiento</span>
+          </div>
+          <div class="lead-item">
+            <div class="lead-source" style="background:linear-gradient(135deg,#E1306C,#833AB4)">📸</div>
+            <div class="lead-info">
+              <div class="lead-name">Diego Morales</div>
+              <div class="lead-detail">Instagram Story · Interés: Ads Pro · hace 1 h</div>
+            </div>
+            <span class="chip purple">En seguimiento</span>
+          </div>
+          <div class="lead-item">
+            <div class="lead-source" style="background:rgba(16,185,129,.2)">🌐</div>
+            <div class="lead-info">
+              <div class="lead-name">Claudia Vega</div>
+              <div class="lead-detail">Web Orgánico · Interés: Social Club · hace 2 h</div>
+            </div>
+            <span class="chip green">Convertido</span>
+          </div>
+          <div class="lead-item">
+            <div class="lead-source" style="background:linear-gradient(135deg,#EA4335,#FBBC05)">🔍</div>
+            <div class="lead-info">
+              <div class="lead-name">Tomás Herrera</div>
+              <div class="lead-detail">Google Ads · Interés: SEO Mastery · hace 3 h</div>
+            </div>
+            <span class="chip green">Convertido</span>
+          </div>
+        </div>
+
+        <!-- Fuentes de leads -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">Fuentes de Leads</div>
+            <div class="card-sub">Mes actual</div>
+          </div>
+          <div class="bar-chart" style="margin-top:8px">
+            <div class="bar-row">
+              <div class="bar-label">Instagram</div>
+              <div class="bar-track"><div class="bar-fill" style="width:72%;background:linear-gradient(90deg,#E1306C,#833AB4)"></div></div>
+              <div class="bar-val" style="color:var(--pink)">482</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">TikTok</div>
+              <div class="bar-track"><div class="bar-fill" style="width:54%;background:linear-gradient(90deg,#333,#555)"></div></div>
+              <div class="bar-val" style="color:var(--text)">362</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Google Ads</div>
+              <div class="bar-track"><div class="bar-fill" style="width:35%;background:linear-gradient(90deg,#EA4335,#FBBC05)"></div></div>
+              <div class="bar-val" style="color:var(--yellow)">234</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">LinkedIn</div>
+              <div class="bar-track"><div class="bar-fill" style="width:22%;background:linear-gradient(90deg,#0A66C2,#1877F2)"></div></div>
+              <div class="bar-val" style="color:var(--cyan)">148</div>
+            </div>
+            <div class="bar-row">
+              <div class="bar-label">Orgánico</div>
+              <div class="bar-track"><div class="bar-fill" style="width:17%;background:linear-gradient(90deg,#10B981,#06B6D4)"></div></div>
+              <div class="bar-val" style="color:var(--green)">116</div>
+            </div>
+          </div>
+
+          <div style="margin-top:28px">
+            <div class="card-title" style="margin-bottom:16px">Embudo de Conversión</div>
+            <div style="display:flex;flex-direction:column;gap:6px;">
+              <div style="background:rgba(124,58,237,.3);padding:10px 16px;border-radius:8px;display:flex;justify-content:space-between;font-size:13px;"><span>👁 Impresiones</span><strong>248,000</strong></div>
+              <div style="background:rgba(124,58,237,.25);padding:10px 16px;border-radius:8px;display:flex;justify-content:space-between;font-size:13px;margin:0 12px;"><span>🖱 Clics</span><strong>14,820</strong></div>
+              <div style="background:rgba(124,58,237,.2);padding:10px 16px;border-radius:8px;display:flex;justify-content:space-between;font-size:13px;margin:0 24px;"><span>📝 Leads</span><strong>1,342</strong></div>
+              <div style="background:rgba(16,185,129,.25);padding:10px 16px;border-radius:8px;display:flex;justify-content:space-between;font-size:13px;margin:0 36px;"><span>✅ Clientes</span><strong style="color:var(--green)">513</strong></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PAGE: AUTOMATIZACIÓN ═══════════════════ -->
+    <div class="page" id="page-automatizacion">
+
+      <div class="stats-row">
+        <div class="stat-item"><div class="stat-num">18</div><div class="stat-lbl">Flujos activos</div></div>
+        <div class="stat-item"><div class="stat-num">4,820</div><div class="stat-lbl">Acciones este mes</div></div>
+        <div class="stat-item"><div class="stat-num">96h</div><div class="stat-lbl">Tiempo ahorrado</div></div>
+        <div class="stat-item"><div class="stat-num">$2,400</div><div class="stat-lbl">ROI de automatización</div></div>
+      </div>
+
+      <div class="section-title mt-32">Flujos de Automatización</div>
+
+      <div class="grid-2">
+        <div>
+          <div class="automation-item">
+            <div class="auto-icon" style="background:rgba(124,58,237,.2)">📧</div>
+            <div class="auto-info">
+              <div class="auto-name">Bienvenida a nuevos leads</div>
+              <div class="auto-desc">Email automático + WhatsApp a los 5 min del registro</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="automation-item">
+            <div class="auto-icon" style="background:rgba(6,182,212,.2)">🔄</div>
+            <div class="auto-info">
+              <div class="auto-name">Follow-up día 3 — sin respuesta</div>
+              <div class="auto-desc">Reactivación automática con oferta especial</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="automation-item">
+            <div class="auto-icon" style="background:rgba(16,185,129,.2)">✅</div>
+            <div class="auto-info">
+              <div class="auto-name">Post-venta: acceso al producto</div>
+              <div class="auto-desc">Envío de credenciales + email de bienvenida al curso</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="automation-item">
+            <div class="auto-icon" style="background:rgba(245,158,11,.2)">⭐</div>
+            <div class="auto-info">
+              <div class="auto-name">Solicitud de reseña — día 7</div>
+              <div class="auto-desc">Pide feedback automaticamente 7 días después de la compra</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="automation-item">
+            <div class="auto-icon" style="background:rgba(239,68,68,.2)">💳</div>
+            <div class="auto-info">
+              <div class="auto-name">Alerta de pago fallido</div>
+              <div class="auto-desc">Notificación inmediata + link de actualización de tarjeta</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+        </div>
+
+        <div>
+          <div class="automation-item">
+            <div class="auto-icon" style="background:rgba(236,72,153,.2)">🎁</div>
+            <div class="auto-info">
+              <div class="auto-name">Upsell — día 14 post-compra</div>
+              <div class="auto-desc">Oferta de producto complementario con descuento 20%</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="automation-item">
+            <div class="auto-icon" style="background:rgba(124,58,237,.2)">📡</div>
+            <div class="auto-info">
+              <div class="auto-name">Lead desde Instagram → CRM</div>
+              <div class="auto-desc">Captura automática de leads de Instagram Lead Ads</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="automation-item">
+            <div class="auto-icon" style="background:rgba(6,182,212,.2)">📊</div>
+            <div class="auto-info">
+              <div class="auto-name">Reporte semanal automático</div>
+              <div class="auto-desc">PDF con KPIs enviado cada lunes a las 8:00 AM</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="automation-item">
+            <div class="auto-icon" style="background:rgba(16,185,129,.2)">🏆</div>
+            <div class="auto-info">
+              <div class="auto-name">Cliente VIP — umbral $5,000</div>
+              <div class="auto-desc">Asigna etiqueta VIP y notifica al equipo de ventas</div>
+            </div>
+            <div class="toggle on"></div>
+          </div>
+          <div class="automation-item">
+            <div class="auto-icon" style="background:rgba(100,100,100,.2)">⏸</div>
+            <div class="auto-info">
+              <div class="auto-name">Recuperación de carrito</div>
+              <div class="auto-desc">Email a usuarios que no completaron la compra</div>
+            </div>
+            <div class="toggle"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PAGE: ANALÍTICA ════════════════════════ -->
+    <div class="page" id="page-analitica">
+
+      <div class="grid-4">
+        <div class="kpi-card purple"><div class="kpi-icon purple">📈</div><div class="kpi-value">$84K</div><div class="kpi-label">Ingresos junio</div><div class="kpi-change up">▲ 24.6%</div></div>
+        <div class="kpi-card cyan"><div class="kpi-icon cyan">🎯</div><div class="kpi-value">38.2%</div><div class="kpi-label">Tasa conversión</div><div class="kpi-change up">▲ 4.1pp</div></div>
+        <div class="kpi-card pink"><div class="kpi-icon pink">💸</div><div class="kpi-value">$14.80</div><div class="kpi-label">Costo por lead</div><div class="kpi-change up">▼ 12% (mejor)</div></div>
+        <div class="kpi-card green"><div class="kpi-icon green">🔄</div><div class="kpi-value">4.2x</div><div class="kpi-label">ROAS total</div><div class="kpi-change up">▲ 0.6x</div></div>
+      </div>
+
+      <div class="grid-2 mt-32">
+        <div class="card">
+          <div class="card-header"><div class="card-title">Ingresos por Producto</div></div>
+          <div class="bar-chart">
+            <div class="bar-row"><div class="bar-label" style="width:130px">SEO Mastery</div><div class="bar-track"><div class="bar-fill" style="width:88%;background:linear-gradient(90deg,#7C3AED,#A855F7)"></div></div><div class="bar-val" style="color:var(--purple2)">$24.6K</div></div>
+            <div class="bar-row"><div class="bar-label" style="width:130px">Social Club</div><div class="bar-track"><div class="bar-fill" style="width:65%;background:linear-gradient(90deg,#06B6D4,#7C3AED)"></div></div><div class="bar-val" style="color:var(--cyan)">$18.1K</div></div>
+            <div class="bar-row"><div class="bar-label" style="width:130px">Pack IA</div><div class="bar-track"><div class="bar-fill" style="width:52%;background:linear-gradient(90deg,#10B981,#06B6D4)"></div></div><div class="bar-val" style="color:var(--green)">$14.5K</div></div>
+            <div class="bar-row"><div class="bar-label" style="width:130px">Consultoría</div><div class="bar-track"><div class="bar-fill" style="width:44%;background:linear-gradient(90deg,#F59E0B,#EC4899)"></div></div><div class="bar-val" style="color:var(--yellow)">$12.3K</div></div>
+            <div class="bar-row"><div class="bar-label" style="width:130px">Ads Pro</div><div class="bar-track"><div class="bar-fill" style="width:32%;background:linear-gradient(90deg,#EC4899,#A855F7)"></div></div><div class="bar-val" style="color:var(--pink)">$8.9K</div></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header"><div class="card-title">Rendimiento por Canal</div></div>
+          <table>
+            <thead><tr><th>Canal</th><th>Leads</th><th>Conv.</th><th>ROI</th></tr></thead>
+            <tbody>
+              <tr><td><span class="chip pink">Instagram</span></td><td>482</td><td>41%</td><td style="color:var(--green);font-weight:700">5.2x</td></tr>
+              <tr><td><span class="chip" style="background:rgba(0,0,0,.3);color:var(--text)">TikTok</span></td><td>362</td><td>35%</td><td style="color:var(--green);font-weight:700">4.8x</td></tr>
+              <tr><td><span class="chip yellow">Google</span></td><td>234</td><td>44%</td><td style="color:var(--green);font-weight:700">6.1x</td></tr>
+              <tr><td><span class="chip cyan">LinkedIn</span></td><td>148</td><td>52%</td><td style="color:var(--green);font-weight:700">7.4x</td></tr>
+              <tr><td><span class="chip green">Orgánico</span></td><td>116</td><td>28%</td><td style="color:var(--green);font-weight:700">∞</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════ PAGE: ASISTENTE IA ═════════════════════ -->
+    <div class="page" id="page-ia">
+
+      <div class="grid-2" style="margin-top:0">
+        <div class="ai-card">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;">
+            <div style="width:44px;height:44px;border-radius:14px;background:linear-gradient(135deg,#7C3AED,#EC4899);display:flex;align-items:center;justify-content:center;font-size:24px;box-shadow:0 0 20px rgba(124,58,237,.5)">🤖</div>
+            <div><div style="font-size:16px;font-weight:800">NexusAI</div><div style="font-size:12px;color:var(--text2)">Asistente inteligente · Disponible 24/7</div></div>
+            <div class="status-dot" style="margin-left:auto"></div>
+          </div>
+          <div class="ai-msg">👋 Hola Edison! Aquí está tu resumen de hoy:<br><br>
+            • <strong>34 nuevos leads</strong> captados (↑ 18% vs ayer)<br>
+            • <strong>$2,840</strong> en ventas digitales (↑ buen ritmo)<br>
+            • <strong>5 pedidos</strong> pendientes de revisión<br>
+            • El lead <strong>Patricia Ruiz</strong> tiene alta probabilidad de cierre (89%)<br><br>
+            ¿Qué quieres hacer?
+          </div>
+          <div class="ai-msg" style="background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.3)">
+            💡 <strong>Sugerencia IA:</strong> Los clientes de LinkedIn tienen 52% de tasa de conversión y mayor LTV. Te recomiendo aumentar el presupuesto en LinkedIn Ads un 20% esta semana.
+          </div>
+          <div class="ai-input">
+            <input type="text" placeholder="Pregunta algo a NexusAI… ej: '¿Qué producto debo potenciar esta semana?'">
+            <button class="btn btn-primary" style="padding:10px 18px;white-space:nowrap;">Enviar ✨</button>
+          </div>
+        </div>
+
+        <div>
+          <div class="card" style="margin-bottom:20px">
+            <div class="card-header"><div class="card-title">Predicciones IA</div><span class="chip purple">Powered by AI</span></div>
+            <div class="activity-item">
+              <div class="act-dot p">🔮</div>
+              <div><div class="act-text"><strong>Patricia Ruiz</strong> — 89% prob. de cierre esta semana</div><div class="act-time">Basado en comportamiento y engagement</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="act-dot y">⚠️</div>
+              <div><div class="act-text"><strong>Sofía Ramos</strong> — riesgo de churn detectado (60 días inactiva)</div><div class="act-time">Acción sugerida: reactivar con oferta</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="act-dot g">📈</div>
+              <div><div class="act-text"><strong>TikTok</strong> — potencial de +1,200 leads si publicas 2 vídeos/día</div><div class="act-time">Ventana óptima: 18:00 - 21:00</div></div>
+            </div>
+            <div class="activity-item">
+              <div class="act-dot c">💰</div>
+              <div><div class="act-text"><strong>Pack IA</strong> — demanda en alza, considera subir precio a $127</div><div class="act-time">Competidores similares cobran $140-$180</div></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header"><div class="card-title">Score de Leads IA</div></div>
+            <div class="lead-item">
+              <div class="lead-source" style="background:rgba(16,185,129,.2);font-size:20px;width:36px;height:36px;">🔥</div>
+              <div class="lead-info"><div class="lead-name">Patricia Ruiz</div><div class="lead-detail">LinkedIn · Consultoría</div></div>
+              <div style="text-align:right"><div style="font-size:18px;font-weight:800;color:var(--green)">89</div><div style="font-size:10px;color:var(--text2)">AI Score</div></div>
+            </div>
+            <div class="lead-item">
+              <div class="lead-source" style="background:rgba(245,158,11,.2);font-size:20px;width:36px;height:36px;">⚡</div>
+              <div class="lead-info"><div class="lead-name">Roberto Salinas</div><div class="lead-detail">TikTok · Pack IA</div></div>
+              <div style="text-align:right"><div style="font-size:18px;font-weight:800;color:var(--yellow)">74</div><div style="font-size:10px;color:var(--text2)">AI Score</div></div>
+            </div>
+            <div class="lead-item">
+              <div class="lead-source" style="background:rgba(124,58,237,.2);font-size:20px;width:36px;height:36px;">✨</div>
+              <div class="lead-info"><div class="lead-name">María Fernández</div><div class="lead-detail">Instagram · SEO Mastery</div></div>
+              <div style="text-align:right"><div style="font-size:18px;font-weight:800;color:var(--purple2)">68</div><div style="font-size:10px;color:var(--text2)">AI Score</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  const pageTitles = {
+    dashboard:       ['Dashboard',         '/ Vista general'],
+    clientes:        ['Clientes',          '/ Base de datos'],
+    pipeline:        ['Pipeline de Ventas','/ Kanban'],
+    productos:       ['Productos Digitales','/ E-Commerce'],
+    pedidos:         ['Pedidos',           '/ E-Commerce'],
+    social:          ['Redes Sociales',    '/ Social Media'],
+    leads:           ['Captación de Leads','/ Social & Leads'],
+    automatizacion:  ['Automatización',    '/ Flujos'],
+    analitica:       ['Analítica & BI',    '/ Reportes'],
+    ia:              ['Asistente IA',      '/ NexusAI'],
+  };
+
+  const topBtnLabels = {
+    clientes:     '+ Nuevo cliente',
+    pipeline:     '+ Nuevo deal',
+    productos:    '+ Nuevo producto',
+    pedidos:      '+ Nuevo pedido',
+    social:       '+ Programar post',
+    leads:        '+ Importar leads',
+    automatizacion:'+ Nuevo flujo',
+    analitica:    '📥 Exportar',
+    ia:           '✨ Nueva consulta',
+    dashboard:    '+ Nuevo',
+  };
+
+  function showPage(id, el) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + id).classList.add('active');
+    if (el) el.classList.add('active');
+    const t = pageTitles[id] || [id, ''];
+    document.getElementById('pageTitle').innerHTML = t[0] + ' <span>' + t[1] + '</span>';
+    document.getElementById('topbarBtn').textContent = topBtnLabels[id] || '+ Nuevo';
+  }
+
+  function handleTopBtn() {
+    const active = document.querySelector('.page.active');
+    if (!active) return;
+    const id = active.id.replace('page-', '');
+    const msgs = {
+      clientes: 'Formulario: Nuevo cliente',
+      pipeline: 'Formulario: Nuevo deal en el pipeline',
+      productos: 'Formulario: Nuevo producto digital',
+      pedidos: 'Formulario: Nuevo pedido manual',
+      social: 'Editor: Programar nuevo post',
+      leads: 'Importar leads desde CSV o conectar fuente',
+      automatizacion: 'Constructor de flujo de automatización',
+      analitica: 'Exportando reporte en PDF...',
+      ia: 'Chat con NexusAI abierto',
+    };
+    alert(msgs[id] || 'Creando nuevo elemento...');
+  }
+</script>
+</body>
+</html>
