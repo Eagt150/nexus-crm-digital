@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vibe CRM
 
-## Getting Started
+Esqueleto base de la app (Next.js + Tailwind + Convex). Las pantallas se
+construyen de forma incremental, una por una, siguiendo las tareas en Linear.
+La especificación de diseño de referencia está en
+`../Prototipo del CRM - Claude Design/design_handoff_crm_pwa/README.md`.
 
-First, run the development server:
+## Stack
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Next.js 16** (App Router, TypeScript, Turbopack)
+- **Tailwind CSS v4** — tokens del Vibe CRM Design System portados a
+  `src/app/globals.css` (`:root` + `[data-theme="dark"]` + `@theme inline`)
+- **Convex** — base de datos; esquema en `convex/schema.ts`
+- **Railway** — despliegue
+
+## Estructura
+
+```
+src/
+  app/
+    layout.tsx          Root layout: fuentes (Inter, JetBrains Mono) + ConvexClientProvider
+    globals.css          Tokens del design system + Tailwind
+    page.tsx              Placeholder de inicio (se sustituirá al construir pantallas)
+  components/
+    ConvexClientProvider.tsx
+convex/
+  schema.ts               Tablas: users, contacts, seguimientos, interacciones, ventas
+  tsconfig.json
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Todavía no hay rutas de pantallas (`/login`, `/hoy`, `/clientes`, etc.) ni
+componentes de UI: se irán añadiendo pantalla a pantalla.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Primeros pasos
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm install
+npx convex dev   # login/crea el proyecto Convex y rellena .env.local (NEXT_PUBLIC_CONVEX_URL)
+npm run dev
+```
 
-## Learn More
+`npm run build` funciona incluso sin `NEXT_PUBLIC_CONVEX_URL` (el provider es
+tolerante), pero sin esa variable no hay datos reales.
 
-To learn more about Next.js, take a look at the following resources:
+## Despliegue en Railway
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+`railway.json` ya configura el build command para desplegar el esquema de
+Convex antes de compilar Next.js:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+npx convex deploy --cmd 'npm run build'
+```
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Variables de entorno necesarias en Railway:
+- `CONVEX_DEPLOY_KEY` (Convex dashboard → Settings → Deploy Keys, producción)
+- `NEXT_PUBLIC_CONVEX_URL` (la genera `convex deploy`, pero conviene fijarla igualmente)
