@@ -13,8 +13,8 @@ import { PlaceholderFormNotice } from "@/components/hoy/PlaceholderFormNotice";
 import { QuickActionsGrid, type QuickAction } from "@/components/hoy/QuickActionsGrid";
 import { useToast } from "@/components/toast/ToastProvider";
 import { todayEyebrow, todayISO } from "@/lib/date";
-import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 const OVERLAY_META: Record<QuickAction, { title: string; ticket: string }> = {
   tarea: { title: "Nueva tarea", ticket: "P-09" }, // TODO(P-09): reemplazar por el formulario real

@@ -2,8 +2,8 @@
 
 import { useQuery } from "convex/react";
 import { PageStub } from "@/components/PageStub";
-import { api } from "@convex/_generated/api";
-import type { Id } from "@convex/_generated/dataModel";
+import { api } from "../../../../../convex/_generated/api";
+import type { Id } from "../../../../../convex/_generated/dataModel";
 
 export function ClienteFichaPlaceholder({ id }: { id: string }) {
   const cliente = useQuery(api.contacts.getById, { id: id as Id<"contacts"> });

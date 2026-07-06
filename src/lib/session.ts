@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { api } from "@convex/_generated/api";
+import { api } from "../../convex/_generated/api";
 
 // DEMO ONLY — ver convex/mockSession.ts. Debe coincidir con MOCK_SESSION_EMAIL
 // ahí. Esto es puramente para la UI (qué nombre/rol mostrar, qué ítems de

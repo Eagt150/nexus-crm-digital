@@ -5,7 +5,7 @@ import { Avatar } from "@/components/ui/Avatar";
 import { Badge } from "@/components/ui/Badge";
 import { daysOverdue, overdueLabel } from "@/lib/date";
 import { estadoToBadgeTone } from "@/lib/estado";
-import type { Id } from "@convex/_generated/dataModel";
+import type { Id } from "../../../convex/_generated/dataModel";
 
 interface FollowUpRowProps {
   id: Id<"seguimientos">;
