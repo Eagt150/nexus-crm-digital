@@ -2,11 +2,13 @@
 
 import { useMutation, useQuery } from "convex/react";
 import { CheckCircle2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Overlay } from "@/components/ui/Overlay";
 import { Button } from "@/components/ui/Button";
+import { ClienteForm } from "@/components/clientes/ClienteForm";
 import { FollowUpRow } from "@/components/hoy/FollowUpRow";
 import { FollowUpSection } from "@/components/hoy/FollowUpSection";
 import { PlaceholderFormNotice } from "@/components/hoy/PlaceholderFormNotice";
@@ -24,9 +26,16 @@ const OVERLAY_META: Record<QuickAction, { title: string; ticket: string }> = {
 };
 
 export default function HoyPage() {
+  const router = useRouter();
   const [localTodayISO] = useState(() => todayISO());
   const [activeOverlay, setActiveOverlay] = useState<QuickAction | null>(null);
   const { showToast } = useToast();
+
+  function handleClienteSaved(id: Id<"contacts">) {
+    setActiveOverlay(null);
+    showToast("Cliente añadido");
+    router.push(`/clientes/${id}`);
+  }
 
   const data = useQuery(api.seguimientos.listPending, { localTodayISO });
   const markDone = useMutation(api.seguimientos.markDone).withOptimisticUpdate(
@@ -139,12 +148,20 @@ export default function HoyPage() {
         onClose={() => setActiveOverlay(null)}
         title={activeOverlay ? OVERLAY_META[activeOverlay].title : ""}
       >
-        {activeOverlay && (
-          <PlaceholderFormNotice
-            label={OVERLAY_META[activeOverlay].title}
-            ticket={OVERLAY_META[activeOverlay].ticket}
-            onClose={() => setActiveOverlay(null)}
+        {activeOverlay === "cliente" ? (
+          <ClienteForm
+            mode="create"
+            onSaved={handleClienteSaved}
+            onCancel={() => setActiveOverlay(null)}
           />
+        ) : (
+          activeOverlay && (
+            <PlaceholderFormNotice
+              label={OVERLAY_META[activeOverlay].title}
+              ticket={OVERLAY_META[activeOverlay].ticket}
+              onClose={() => setActiveOverlay(null)}
+            />
+          )
         )}
       </Overlay>
     </div>

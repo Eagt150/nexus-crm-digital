@@ -9,6 +9,10 @@ export default defineSchema({
     nombre: v.string(),
     email: v.string(),
     rol: v.union(v.literal("propietaria"), v.literal("comercial")),
+    // DEMO ONLY — texto plano a propósito: no hay auth real todavía (ver
+    // convex/mockSession.ts). INTEGRATION POINT (MCP-28): eliminar este
+    // campo cuando el proveedor de auth real gestione credenciales.
+    password: v.optional(v.string()),
   }).index("by_email", ["email"]),
 
   contacts: defineTable({
@@ -21,6 +25,10 @@ export default defineSchema({
     ),
     nota: v.optional(v.string()),
     estado: v.optional(v.string()),
+    // Quién dio de alta el contacto. Permite que un `comercial` vea sus
+    // propios clientes recién creados aunque todavía no tengan ningún
+    // seguimiento asignado (ver visibleContacts en contacts.ts).
+    creadoPor: v.optional(v.id("users")),
   }).index("by_nombre", ["nombre"]),
 
   seguimientos: defineTable({

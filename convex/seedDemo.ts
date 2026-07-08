@@ -2,6 +2,9 @@ import { mutation } from "./_generated/server";
 import { MOCK_SESSION_EMAIL } from "./mockSession";
 
 const CARLOS_EMAIL = "carlos@vibecrm.dev";
+// DEMO ONLY — contraseña de prueba en texto plano para poder iniciar sesión
+// localmente (ver convex/schema.ts `users.password`).
+const DEMO_PASSWORD = "vibecrm2024";
 
 // DEMO ONLY — inserta datos ficticios para verificar la conexión con Convex
 // desde el dashboard. Borra estas mutations y las filas que crean cuando ya
@@ -90,7 +93,11 @@ export const seedDemoUsers = mutation({
       .withIndex("by_email", (q) => q.eq("email", CARLOS_EMAIL))
       .unique();
 
-    if (marta && carlos) return { marta: marta._id, carlos: carlos._id };
+    if (marta && carlos) {
+      if (!marta.password) await ctx.db.patch(marta._id, { password: DEMO_PASSWORD });
+      if (!carlos.password) await ctx.db.patch(carlos._id, { password: DEMO_PASSWORD });
+      return { marta: marta._id, carlos: carlos._id };
+    }
     if (marta || carlos) {
       throw new Error(
         "Estado de `users` inconsistente para el seed demo (falta uno de los dos usuarios demo) — revisa la tabla desde el dashboard."
@@ -101,11 +108,13 @@ export const seedDemoUsers = mutation({
       nombre: "Marta López",
       email: MOCK_SESSION_EMAIL,
       rol: "propietaria",
+      password: DEMO_PASSWORD,
     });
     const carlosId = await ctx.db.insert("users", {
       nombre: "Carlos Ruiz Comercial",
       email: CARLOS_EMAIL,
       rol: "comercial",
+      password: DEMO_PASSWORD,
     });
     return { marta: martaId, carlos: carlosId };
   },
@@ -188,6 +197,188 @@ export const seedDemoSeguimientos = mutation({
     const ids = [];
     for (const row of rows) {
       ids.push(await ctx.db.insert("seguimientos", row));
+    }
+    return ids;
+  },
+});
+
+export const seedDemoInteracciones = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const contacts = await ctx.db.query("contacts").collect();
+    if (contacts.length !== 5) {
+      throw new Error("Corre seedDemoContacts primero (se esperan exactamente 5 contactos).");
+    }
+
+    const marta = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", MOCK_SESSION_EMAIL))
+      .unique();
+    const carlos = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", CARLOS_EMAIL))
+      .unique();
+    if (!marta || !carlos) {
+      throw new Error("Corre seedDemoUsers primero (faltan Marta y/o Carlos).");
+    }
+
+    const existing = await ctx.db.query("interacciones").collect();
+    if (existing.length >= 6) return existing.map((i) => i._id);
+    if (existing.length !== 0) {
+      throw new Error(
+        "Estado de `interacciones` inconsistente para el seed demo — borra la tabla manualmente desde el dashboard antes de re-sembrar."
+      );
+    }
+
+    const today = new Date();
+    const iso = (deltaDays: number) => {
+      const d = new Date(today);
+      d.setUTCDate(d.getUTCDate() + deltaDays);
+      return d.toISOString().slice(0, 10);
+    };
+
+    const rows = [
+      {
+        clienteId: contacts[0]._id,
+        tipo: "llamada" as const,
+        texto: "Confirmó que quiere el plan mensual, pendiente de cerrar el pedido.",
+        fecha: iso(0),
+        autor: marta._id,
+      },
+      {
+        clienteId: contacts[1]._id,
+        tipo: "email" as const,
+        texto: "Se envió la propuesta actualizada con el nuevo alcance.",
+        fecha: iso(-1),
+        autor: carlos._id,
+      },
+      {
+        clienteId: contacts[2]._id,
+        tipo: "whatsapp" as const,
+        texto: "Preguntó por el precio del plan anual.",
+        fecha: iso(-2),
+        autor: marta._id,
+      },
+      {
+        clienteId: contacts[3]._id,
+        tipo: "llamada" as const,
+        texto: "Sin respuesta, se deja mensaje de voz.",
+        fecha: iso(-7),
+        autor: carlos._id,
+      },
+      {
+        clienteId: contacts[4]._id,
+        tipo: "en_persona" as const,
+        texto: "Visita de seguimiento tras la entrega, muy satisfecha.",
+        fecha: iso(-3),
+        autor: marta._id,
+      },
+      {
+        clienteId: contacts[0]._id,
+        tipo: "email" as const,
+        texto: "Se envió el catálogo con las novedades del mes.",
+        fecha: iso(-10),
+        autor: marta._id,
+      },
+    ];
+
+    const ids = [];
+    for (const row of rows) {
+      ids.push(await ctx.db.insert("interacciones", row));
+    }
+    return ids;
+  },
+});
+
+export const seedDemoVentas = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const contacts = await ctx.db.query("contacts").collect();
+    if (contacts.length !== 5) {
+      throw new Error("Corre seedDemoContacts primero (se esperan exactamente 5 contactos).");
+    }
+
+    const marta = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", MOCK_SESSION_EMAIL))
+      .unique();
+    const carlos = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", CARLOS_EMAIL))
+      .unique();
+    if (!marta || !carlos) {
+      throw new Error("Corre seedDemoUsers primero (faltan Marta y/o Carlos).");
+    }
+
+    const existing = await ctx.db.query("ventas").collect();
+    if (existing.length >= 6) return existing.map((v) => v._id);
+    if (existing.length !== 0) {
+      throw new Error(
+        "Estado de `ventas` inconsistente para el seed demo — borra la tabla manualmente desde el dashboard antes de re-sembrar."
+      );
+    }
+
+    const today = new Date();
+    const iso = (deltaDays: number) => {
+      const d = new Date(today);
+      d.setUTCDate(d.getUTCDate() + deltaDays);
+      return d.toISOString().slice(0, 10);
+    };
+
+    const rows = [
+      {
+        clienteId: contacts[0]._id,
+        concepto: "Plan mensual — Panadería El Trigal",
+        importe: 149,
+        estado: "oportunidad" as const,
+        fecha: iso(0),
+        autor: marta._id,
+      },
+      {
+        clienteId: contacts[1]._id,
+        concepto: "Consultoría inicial",
+        importe: 890,
+        estado: "ganada" as const,
+        fecha: iso(-2),
+        autor: carlos._id,
+      },
+      {
+        clienteId: contacts[2]._id,
+        concepto: "Compra particular",
+        importe: 60,
+        estado: "ganada" as const,
+        fecha: iso(-4),
+        autor: marta._id,
+      },
+      {
+        clienteId: contacts[3]._id,
+        concepto: "Plan anual — Torres & Asociados",
+        importe: 1200,
+        estado: "perdida" as const,
+        fecha: iso(-8),
+        autor: carlos._id,
+      },
+      {
+        clienteId: contacts[4]._id,
+        concepto: "Renovación plan anual",
+        importe: 990,
+        estado: "ganada" as const,
+        fecha: iso(-5),
+        autor: marta._id,
+      },
+      {
+        clienteId: contacts[4]._id,
+        concepto: "Servicio adicional de diseño",
+        importe: 320,
+        estado: "oportunidad" as const,
+        fecha: iso(-1),
+        autor: marta._id,
+      },
+    ];
+
+    const ids = [];
+    for (const row of rows) {
+      ids.push(await ctx.db.insert("ventas", row));
     }
     return ids;
   },

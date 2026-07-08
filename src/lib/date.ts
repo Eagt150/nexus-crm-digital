@@ -17,6 +17,16 @@ export function overdueLabel(days: number): string {
   return `Venció hace ${days} días`;
 }
 
+export function lastContactLabel(iso: string | null, todayISOValue: string): string {
+  if (!iso) return "Sin contacto registrado";
+  const days = daysOverdue(iso, todayISOValue);
+  if (days <= 0) return "Último contacto: Hoy";
+  if (days === 1) return "Último contacto: Ayer";
+  if (days < 7) return `Último contacto: Hace ${days} días`;
+  const weeks = Math.round(days / 7);
+  return `Último contacto: Hace ${weeks} semana${weeks === 1 ? "" : "s"}`;
+}
+
 export function todayEyebrow(date = new Date()): string {
   return new Intl.DateTimeFormat("es-ES", {
     weekday: "long",
