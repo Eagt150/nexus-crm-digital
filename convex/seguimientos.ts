@@ -95,6 +95,7 @@ export const listByCliente = query({
       hecho: v.boolean(),
       fechaHecho: v.optional(v.string()),
       responsable: v.object({ id: v.id("users"), nombre: v.string() }),
+      canMarkDone: v.boolean(),
     })
   ),
   handler: async (ctx, { clienteId }) => {
@@ -120,6 +121,13 @@ export const listByCliente = query({
           hecho: row.hecho,
           fechaHecho: row.fechaHecho,
           responsable: { id: responsable._id, nombre: responsable.nombre },
+          // Mismo contrato de autorización que `markDone`/`loadAuthorized` más
+          // abajo: la ficha muestra los seguimientos de TODOS los responsables
+          // (para que Carlos vea el cuadro completo), pero solo puede marcarlos
+          // como hechos la propietaria o el responsable asignado. Sin este
+          // campo, la UI no tiene forma de saber que el checkbox de un
+          // seguimiento ajeno va a ser rechazado por el servidor.
+          canMarkDone: currentUser.rol === "propietaria" || row.responsable === currentUser._id,
         };
       })
     );

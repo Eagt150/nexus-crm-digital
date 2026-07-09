@@ -81,9 +81,13 @@ export function ClienteFicha({ id }: { id: string }) {
     }
   });
 
-  function handleDone(seguimientoId: Id<"seguimientos">) {
-    markDone({ id: seguimientoId });
-    showToast("Seguimiento completado");
+  async function handleDone(seguimientoId: Id<"seguimientos">) {
+    try {
+      await markDone({ id: seguimientoId });
+      showToast("Seguimiento completado");
+    } catch {
+      showToast("No se pudo marcar como hecho: no eres responsable de este seguimiento.");
+    }
   }
 
   const childLoading =
@@ -260,12 +264,22 @@ export function ClienteFicha({ id }: { id: string }) {
                 >
                   <button
                     type="button"
-                    aria-label={`Marcar "${row.accion}" como hecho`}
+                    disabled={!row.canMarkDone}
+                    aria-label={
+                      row.canMarkDone
+                        ? `Marcar "${row.accion}" como hecho`
+                        : `Solo ${row.responsable.nombre} o la propietaria pueden marcar "${row.accion}" como hecho`
+                    }
+                    title={row.canMarkDone ? undefined : `Asignado a ${row.responsable.nombre}`}
                     onClick={() => handleDone(row.id)}
-                    className="flex size-8 shrink-0 items-center justify-center"
+                    className="flex size-8 shrink-0 items-center justify-center disabled:cursor-not-allowed"
                   >
                     <span
-                      className="size-6 rounded-full border-[1.5px] border-border-strong transition-colors duration-fast ease-standard hover:border-primary"
+                      className={`size-6 rounded-full border-[1.5px] transition-colors duration-fast ease-standard ${
+                        row.canMarkDone
+                          ? "border-border-strong hover:border-primary"
+                          : "border-border opacity-50"
+                      }`}
                       aria-hidden
                     />
                   </button>
