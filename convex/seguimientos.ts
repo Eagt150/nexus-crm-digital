@@ -2,6 +2,8 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { query, mutation, type QueryCtx, type MutationCtx } from "./_generated/server";
 import { getMockCurrentUser } from "./mockSession";
+import { loadAuthorizedContact, isContactVisible } from "./contacts";
+import { isValidISODate } from "./validation";
 
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
@@ -74,6 +76,86 @@ export const listPending = query({
     );
 
     return resolved.filter((row): row is NonNullable<typeof row> => row !== null);
+  },
+});
+
+// Seguimientos de un cliente concreto: alimenta tanto "pendientes"
+// (hecho=false) como "seguimientos completados" del historial (hecho=true)
+// en la ficha — una sola query sirve ambas secciones, el frontend filtra por
+// `hecho`. Query de lectura: nunca lanza por autorización, devuelve `[]` si
+// el cliente no existe o no es visible (mismo contrato que
+// `contacts.getById`/`interacciones.listByCliente`).
+export const listByCliente = query({
+  args: { clienteId: v.id("contacts") },
+  returns: v.array(
+    v.object({
+      id: v.id("seguimientos"),
+      accion: v.string(),
+      vence: v.string(),
+      hecho: v.boolean(),
+      fechaHecho: v.optional(v.string()),
+      responsable: v.object({ id: v.id("users"), nombre: v.string() }),
+    })
+  ),
+  handler: async (ctx, { clienteId }) => {
+    const contact = await ctx.db.get(clienteId);
+    if (!contact) return [];
+
+    const currentUser = await getMockCurrentUser(ctx);
+    if (!(await isContactVisible(ctx, contact, currentUser))) return [];
+
+    const rows = await ctx.db
+      .query("seguimientos")
+      .withIndex("by_cliente", (q) => q.eq("clienteId", clienteId))
+      .collect();
+
+    const resolved = await Promise.all(
+      rows.map(async (row) => {
+        const responsable = await ctx.db.get(row.responsable);
+        if (!responsable) return null;
+        return {
+          id: row._id,
+          accion: row.accion,
+          vence: row.vence,
+          hecho: row.hecho,
+          fechaHecho: row.fechaHecho,
+          responsable: { id: responsable._id, nombre: responsable.nombre },
+        };
+      })
+    );
+
+    return resolved.filter((row): row is NonNullable<typeof row> => row !== null);
+  },
+});
+
+export const create = mutation({
+  args: {
+    clienteId: v.id("contacts"),
+    accion: v.string(),
+    vence: v.string(),
+    responsableId: v.id("users"),
+  },
+  returns: v.id("seguimientos"),
+  handler: async (ctx, { clienteId, accion, vence, responsableId }) => {
+    await loadAuthorizedContact(ctx, clienteId);
+
+    const accion_ = accion.trim();
+    if (!accion_) throw new Error("La acción es obligatoria.");
+    if (!isValidISODate(vence)) throw new Error("Fecha no válida.");
+
+    // `responsable` puede venir del cliente (P-08 permite reasignar a
+    // cualquier miembro del equipo) — a diferencia de `autor`, que nunca
+    // acepta el cliente. Por eso se valida explícitamente que exista.
+    const responsable = await ctx.db.get(responsableId);
+    if (!responsable) throw new Error("Responsable no válido.");
+
+    return await ctx.db.insert("seguimientos", {
+      clienteId,
+      accion: accion_,
+      vence,
+      hecho: false,
+      responsable: responsableId,
+    });
   },
 });
 
