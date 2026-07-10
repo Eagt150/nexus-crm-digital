@@ -1,11 +1,12 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { Search, X } from "lucide-react";
+import { Search, UserPlus, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { ListRow } from "@/components/ui/ListRow";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ClienteForm } from "@/components/clientes/ClienteForm";
 import { lastContactLabel, todayISO } from "@/lib/date";
 import { normalizePhone } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
@@ -16,12 +17,16 @@ interface ClientePickerProps {
 }
 
 // Selector de cliente con búsqueda en tiempo real, para overlays que se
-// abren sin cliente fijado (p. ej. "Anotar interacción" desde Hoy). No
-// conoce Overlay/pasos previos/siguientes — solo reporta la elección via
-// onSelect, igual que ClienteForm/InteraccionForm reportan via onSaved.
+// abren sin cliente fijado (p. ej. "Anotar interacción"/"Nueva tarea" desde
+// Hoy). No conoce Overlay/pasos previos/siguientes — solo reporta la
+// elección via onSelect, igual que ClienteForm/InteraccionForm reportan via
+// onSaved. Incluye su propio paso de alta rápida ("+ Nuevo cliente"): al
+// guardar, ClienteForm entrega id+nombre directamente (determinista, sin
+// depender de que la lista reactiva ya haya incorporado el nuevo registro).
 export function ClientePicker({ onSelect }: ClientePickerProps) {
   const [localTodayISO] = useState(() => todayISO());
   const [query, setQuery] = useState("");
+  const [creating, setCreating] = useState(false);
   const contacts = useQuery(api.contacts.list, {});
 
   const filtered = useMemo(() => {
@@ -41,6 +46,16 @@ export function ClientePicker({ onSelect }: ClientePickerProps) {
 
   const isLoading = contacts === undefined;
   const hasQuery = query.trim().length > 0;
+
+  if (creating) {
+    return (
+      <ClienteForm
+        mode="create"
+        onSaved={(id, nombre) => onSelect(id, nombre)}
+        onCancel={() => setCreating(false)}
+      />
+    );
+  }
 
   return (
     <div className="flex flex-col gap-3">
@@ -98,6 +113,15 @@ export function ClientePicker({ onSelect }: ClientePickerProps) {
           ))}
         </div>
       )}
+
+      <button
+        type="button"
+        onClick={() => setCreating(true)}
+        className="flex items-center justify-center gap-2 rounded-md py-2 text-sm font-medium text-primary hover:underline"
+      >
+        <UserPlus className="size-4" aria-hidden />
+        + Nuevo cliente
+      </button>
     </div>
   );
 }

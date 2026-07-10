@@ -39,7 +39,7 @@ export interface ClienteEditData {
 }
 
 type ClienteFormProps =
-  | { mode: "create"; onSaved: (id: Id<"contacts">) => void; onCancel: () => void }
+  | { mode: "create"; onSaved: (id: Id<"contacts">, nombre: string) => void; onCancel: () => void }
   | { mode: "edit"; contact: ClienteEditData; onSaved: () => void; onCancel: () => void };
 
 // Formulario compartido de alta/edición de cliente (F1). No conoce Overlay,
@@ -87,7 +87,7 @@ export function ClienteForm(props: ClienteFormProps) {
 
       if (props.mode === "create") {
         const id = await createContact(shared);
-        props.onSaved(id);
+        props.onSaved(id, shared.nombre);
       } else {
         await updateContact({ id: props.contact.id, ...shared, estado: estado ?? undefined });
         props.onSaved();
