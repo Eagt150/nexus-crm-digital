@@ -9,6 +9,8 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { Overlay } from "@/components/ui/Overlay";
 import { Button } from "@/components/ui/Button";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
+import { ClientePicker } from "@/components/clientes/ClientePicker";
+import { InteraccionForm } from "@/components/interacciones/InteraccionForm";
 import { FollowUpRow } from "@/components/hoy/FollowUpRow";
 import { FollowUpSection } from "@/components/hoy/FollowUpSection";
 import { PlaceholderFormNotice } from "@/components/hoy/PlaceholderFormNotice";
@@ -29,12 +31,26 @@ export default function HoyPage() {
   const router = useRouter();
   const [localTodayISO] = useState(() => todayISO());
   const [activeOverlay, setActiveOverlay] = useState<QuickAction | null>(null);
+  const [interaccionCliente, setInteraccionCliente] = useState<{
+    id: Id<"contacts">;
+    nombre: string;
+  } | null>(null);
   const { showToast } = useToast();
 
   function handleClienteSaved(id: Id<"contacts">) {
     setActiveOverlay(null);
     showToast("Cliente añadido");
     router.push(`/clientes/${id}`);
+  }
+
+  function handleCloseInteraccion() {
+    setActiveOverlay(null);
+    setInteraccionCliente(null);
+  }
+
+  function handleInteraccionSaved() {
+    handleCloseInteraccion();
+    showToast("Interacción registrada");
   }
 
   const data = useQuery(api.seguimientos.listPending, { localTodayISO });
@@ -145,7 +161,7 @@ export default function HoyPage() {
 
       <Overlay
         open={activeOverlay !== null}
-        onClose={() => setActiveOverlay(null)}
+        onClose={activeOverlay === "interaccion" ? handleCloseInteraccion : () => setActiveOverlay(null)}
         title={activeOverlay ? OVERLAY_META[activeOverlay].title : ""}
       >
         {activeOverlay === "cliente" ? (
@@ -154,6 +170,28 @@ export default function HoyPage() {
             onSaved={handleClienteSaved}
             onCancel={() => setActiveOverlay(null)}
           />
+        ) : activeOverlay === "interaccion" ? (
+          interaccionCliente === null ? (
+            <ClientePicker onSelect={(id, nombre) => setInteraccionCliente({ id, nombre })} />
+          ) : (
+            <>
+              <p className="mb-3 text-sm text-muted">
+                Cliente: <span className="font-medium text-text">{interaccionCliente.nombre}</span>{" "}
+                <button
+                  type="button"
+                  className="text-primary hover:underline"
+                  onClick={() => setInteraccionCliente(null)}
+                >
+                  Cambiar
+                </button>
+              </p>
+              <InteraccionForm
+                clienteId={interaccionCliente.id}
+                onSaved={handleInteraccionSaved}
+                onCancel={handleCloseInteraccion}
+              />
+            </>
+          )
         ) : (
           activeOverlay && (
             <PlaceholderFormNotice
