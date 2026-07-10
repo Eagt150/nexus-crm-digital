@@ -6,6 +6,7 @@ import { useMemo, useState } from "react";
 import { Avatar } from "@/components/ui/Avatar";
 import { ListRow } from "@/components/ui/ListRow";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { lastContactLabel, todayISO } from "@/lib/date";
 import { normalizePhone } from "@/lib/utils";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -19,6 +20,7 @@ interface ClientePickerProps {
 // conoce Overlay/pasos previos/siguientes — solo reporta la elección via
 // onSelect, igual que ClienteForm/InteraccionForm reportan via onSaved.
 export function ClientePicker({ onSelect }: ClientePickerProps) {
+  const [localTodayISO] = useState(() => todayISO());
   const [query, setQuery] = useState("");
   const contacts = useQuery(api.contacts.list, {});
 
@@ -89,7 +91,7 @@ export function ClientePicker({ onSelect }: ClientePickerProps) {
               <ListRow
                 avatar={<Avatar name={c.nombre} />}
                 title={c.nombre}
-                subtitle={c.empresa}
+                subtitle={c.empresa ?? c.email ?? lastContactLabel(c.ultimoContacto, localTodayISO)}
                 onClick={() => onSelect(c.id, c.nombre)}
               />
             </div>
