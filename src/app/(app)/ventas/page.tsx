@@ -1,17 +1,23 @@
 "use client";
 
 import { useQuery } from "convex/react";
-import { TrendingUp } from "lucide-react";
+import { Plus, TrendingUp } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ListRow } from "@/components/ui/ListRow";
 import { Metric } from "@/components/ui/Metric";
+import { Overlay } from "@/components/ui/Overlay";
 import { Skeleton } from "@/components/ui/Skeleton";
+import { ClientPickerFlow } from "@/components/clientes/ClientPickerFlow";
+import { VentaForm } from "@/components/ventas/VentaForm";
+import { useToast } from "@/components/toast/ToastProvider";
 import { ventaEstadoLabel, ventaEstadoToBadgeTone, type VentaEstado } from "@/lib/estado";
 import { cn, formatEuro } from "@/lib/utils";
 import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
 
 type Filter = "todas" | VentaEstado;
 
@@ -31,9 +37,22 @@ const EMPTY_COPY: Record<Filter, { title: string; helper: string }> = {
 
 export default function VentasPage() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [filter, setFilter] = useState<Filter>("todas");
+  const [addingVenta, setAddingVenta] = useState(false);
+  const [ventaCliente, setVentaCliente] = useState<{ id: Id<"contacts">; nombre: string } | null>(null);
   const ventas = useQuery(api.ventas.list, {});
   const isLoading = ventas === undefined;
+
+  function handleCloseVenta() {
+    setAddingVenta(false);
+    setVentaCliente(null);
+  }
+
+  function handleVentaSaved() {
+    handleCloseVenta();
+    showToast("Venta registrada");
+  }
 
   const { enMarcha, ganado, counts } = useMemo(() => {
     const rows = ventas ?? [];
@@ -57,8 +76,12 @@ export default function VentasPage() {
 
   return (
     <div className="mx-auto flex w-full max-w-[860px] flex-col gap-5 px-4 py-7 md:px-8">
-      <header>
+      <header className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight text-text">Ventas</h1>
+        <Button variant="primary" onClick={() => setAddingVenta(true)}>
+          <Plus className="size-4" aria-hidden />
+          Añadir venta
+        </Button>
       </header>
 
       <div className="grid grid-cols-2 gap-4">
@@ -133,6 +156,17 @@ export default function VentasPage() {
           ))}
         </div>
       )}
+
+      <Overlay open={addingVenta} onClose={handleCloseVenta} title="Añadir venta">
+        <ClientPickerFlow
+          cliente={ventaCliente}
+          onPick={(id, nombre) => setVentaCliente({ id, nombre })}
+          onChangeCliente={() => setVentaCliente(null)}
+          renderForm={(clienteId) => (
+            <VentaForm clienteId={clienteId} onSaved={handleVentaSaved} onCancel={handleCloseVenta} />
+          )}
+        />
+      </Overlay>
     </div>
   );
 }
