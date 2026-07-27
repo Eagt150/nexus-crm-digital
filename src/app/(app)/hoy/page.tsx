@@ -3,7 +3,7 @@
 import { useMutation, useQuery } from "convex/react";
 import { CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Overlay } from "@/components/ui/Overlay";
@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
 import { ClientePicker } from "@/components/clientes/ClientePicker";
 import { InteraccionForm } from "@/components/interacciones/InteraccionForm";
+import { SeguimientoForm } from "@/components/seguimientos/SeguimientoForm";
 import { FollowUpRow } from "@/components/hoy/FollowUpRow";
 import { FollowUpSection } from "@/components/hoy/FollowUpSection";
 import { PlaceholderFormNotice } from "@/components/hoy/PlaceholderFormNotice";
@@ -19,6 +20,33 @@ import { useToast } from "@/components/toast/ToastProvider";
 import { todayEyebrow, todayISO } from "@/lib/date";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
+
+// Shell compartido por los overlays que se abren desde Hoy sin cliente
+// fijado ("interaccion", "tarea"): primero el picker, y una vez elegido el
+// cliente, el encabezado "Cliente: X Cambiar" + el formulario que corresponda.
+function renderClientPickerFlow(
+  cliente: { id: Id<"contacts">; nombre: string } | null,
+  onPick: (id: Id<"contacts">, nombre: string) => void,
+  onChangeCliente: () => void,
+  renderForm: (clienteId: Id<"contacts">) => ReactNode
+) {
+  if (cliente === null) return <ClientePicker onSelect={onPick} />;
+  return (
+    <>
+      <p className="mb-3 text-sm text-muted">
+        Cliente: <span className="font-medium text-text">{cliente.nombre}</span>{" "}
+        <button
+          type="button"
+          className="text-primary hover:underline"
+          onClick={onChangeCliente}
+        >
+          Cambiar
+        </button>
+      </p>
+      {renderForm(cliente.id)}
+    </>
+  );
+}
 
 const OVERLAY_META: Record<QuickAction, { title: string; ticket: string }> = {
   tarea: { title: "Nueva tarea", ticket: "P-09" }, // TODO(P-09): reemplazar por el formulario real
@@ -32,6 +60,10 @@ export default function HoyPage() {
   const [localTodayISO] = useState(() => todayISO());
   const [activeOverlay, setActiveOverlay] = useState<QuickAction | null>(null);
   const [interaccionCliente, setInteraccionCliente] = useState<{
+    id: Id<"contacts">;
+    nombre: string;
+  } | null>(null);
+  const [tareaCliente, setTareaCliente] = useState<{
     id: Id<"contacts">;
     nombre: string;
   } | null>(null);
@@ -51,6 +83,16 @@ export default function HoyPage() {
   function handleInteraccionSaved() {
     handleCloseInteraccion();
     showToast("Interacción registrada");
+  }
+
+  function handleCloseTarea() {
+    setActiveOverlay(null);
+    setTareaCliente(null);
+  }
+
+  function handleTareaSaved() {
+    handleCloseTarea();
+    showToast("Seguimiento programado");
   }
 
   const data = useQuery(api.seguimientos.listPending, { localTodayISO });
@@ -161,7 +203,13 @@ export default function HoyPage() {
 
       <Overlay
         open={activeOverlay !== null}
-        onClose={activeOverlay === "interaccion" ? handleCloseInteraccion : () => setActiveOverlay(null)}
+        onClose={
+          activeOverlay === "interaccion"
+            ? handleCloseInteraccion
+            : activeOverlay === "tarea"
+              ? handleCloseTarea
+              : () => setActiveOverlay(null)
+        }
         title={activeOverlay ? OVERLAY_META[activeOverlay].title : ""}
       >
         {activeOverlay === "cliente" ? (
@@ -171,26 +219,30 @@ export default function HoyPage() {
             onCancel={() => setActiveOverlay(null)}
           />
         ) : activeOverlay === "interaccion" ? (
-          interaccionCliente === null ? (
-            <ClientePicker onSelect={(id, nombre) => setInteraccionCliente({ id, nombre })} />
-          ) : (
-            <>
-              <p className="mb-3 text-sm text-muted">
-                Cliente: <span className="font-medium text-text">{interaccionCliente.nombre}</span>{" "}
-                <button
-                  type="button"
-                  className="text-primary hover:underline"
-                  onClick={() => setInteraccionCliente(null)}
-                >
-                  Cambiar
-                </button>
-              </p>
+          renderClientPickerFlow(
+            interaccionCliente,
+            (id, nombre) => setInteraccionCliente({ id, nombre }),
+            () => setInteraccionCliente(null),
+            (clienteId) => (
               <InteraccionForm
-                clienteId={interaccionCliente.id}
+                clienteId={clienteId}
                 onSaved={handleInteraccionSaved}
                 onCancel={handleCloseInteraccion}
               />
-            </>
+            )
+          )
+        ) : activeOverlay === "tarea" ? (
+          renderClientPickerFlow(
+            tareaCliente,
+            (id, nombre) => setTareaCliente({ id, nombre }),
+            () => setTareaCliente(null),
+            (clienteId) => (
+              <SeguimientoForm
+                clienteId={clienteId}
+                onSaved={handleTareaSaved}
+                onCancel={handleCloseTarea}
+              />
+            )
           )
         ) : (
           activeOverlay && (
