@@ -33,7 +33,7 @@ export function SeguimientoForm({ clienteId, onSaved, onCancel }: SeguimientoFor
 
   const createSeguimiento = useMutation(api.seguimientos.create);
 
-  const effectiveResponsableId = responsableId ?? currentUser?._id ?? null;
+  const effectiveResponsableId = responsableId ?? currentUser?.id ?? null;
   const accionValid = accion.trim().length > 0;
   const fechaValid = fecha.trim().length > 0;
   const formValid = accionValid && fechaValid && effectiveResponsableId !== null;

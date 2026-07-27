@@ -1,6 +1,7 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { getMockCurrentUser, MOCK_SESSION_EMAIL } from "./mockSession";
+import { action, internalQuery, mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
+import { getCurrentUserOrNull, normalizeEmail, requireCurrentUser } from "./mockSession";
 
 const SAFE_USER_FIELDS = v.object({
   id: v.id("users"),
@@ -9,19 +10,52 @@ const SAFE_USER_FIELDS = v.object({
   rol: v.union(v.literal("propietaria"), v.literal("comercial")),
 });
 
-// Sin argumentos a propósito: expone únicamente el usuario de la sesión
-// mock fija (ver convex/mockSession.ts), nunca un email arbitrario que
-// mande el cliente — así no sirve para enumerar usuarios/roles por email.
-// No lanza si falta el seed (a diferencia de getMockCurrentUser): el
-// frontend la usa para decidir qué mostrar mientras carga, así que un
-// `null` (no sembrado todavía) es más útil que un error no capturado.
+// Sin argumentos a propósito: expone únicamente el usuario autenticado real
+// (identidad verificada por Convex vía ctx.auth, ver convex/mockSession.ts
+// y convex/auth.config.ts), nunca un email arbitrario que mande el cliente —
+// así no sirve para enumerar usuarios/roles por email. No lanza si no hay
+// sesión o el usuario no está aprovisionado: el frontend la usa para decidir
+// qué mostrar mientras carga, así que un `null` es más útil que un error no
+// capturado.
 export const getCurrentUser = query({
   args: {},
+  returns: v.union(SAFE_USER_FIELDS, v.null()),
   handler: async (ctx) => {
-    return await ctx.db
+    const user = await getCurrentUserOrNull(ctx);
+    if (!user) return null;
+    return { id: user._id, nombre: user.nombre, email: user.email, rol: user.rol };
+  },
+});
+
+// Existencia-únicamente, invocable solo desde otras funciones de Convex
+// (nunca desde el cliente): respalda `checkProvisioned` más abajo, que es la
+// única forma de consultar esto desde fuera, y solo con el secreto
+// compartido correcto — así se evita exponer una query pública que permita
+// enumerar qué emails están aprovisionados.
+export const isProvisionedInternal = internalQuery({
+  args: { email: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { email }) => {
+    const user = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", MOCK_SESSION_EMAIL))
+      .withIndex("by_email", (q) => q.eq("email", normalizeEmail(email)))
       .unique();
+    return user !== null;
+  },
+});
+
+// Gate de aprovisionamiento para el login con Google: Auth.js (server-side,
+// callback `signIn`) llama a esta action pasando el secreto compartido
+// PROVISION_CHECK_SECRET (nunca expuesto al cliente). Si el secreto no
+// coincide, devuelve `false` sin distinguir ese caso de "no aprovisionado"
+// en la respuesta — no hay forma de usar esto para enumerar emails sin
+// conocer ya el secreto del servidor.
+export const checkProvisioned = action({
+  args: { email: v.string(), secret: v.string() },
+  returns: v.boolean(),
+  handler: async (ctx, { email, secret }): Promise<boolean> => {
+    if (secret !== process.env.PROVISION_CHECK_SECRET) return false;
+    return await ctx.runQuery(internal.users.isProvisionedInternal, { email });
   },
 });
 
@@ -64,7 +98,7 @@ export const listAll = query({
   args: {},
   returns: v.array(SAFE_USER_FIELDS),
   handler: async (ctx) => {
-    const currentUser = await getMockCurrentUser(ctx);
+    const currentUser = await requireCurrentUser(ctx);
     if (currentUser.rol !== "propietaria") return [];
 
     const users = await ctx.db.query("users").collect();

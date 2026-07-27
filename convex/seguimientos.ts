@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { query, mutation, type QueryCtx, type MutationCtx } from "./_generated/server";
-import { getMockCurrentUser } from "./mockSession";
+import { requireCurrentUser } from "./mockSession";
 import { loadAuthorizedContact, isContactVisible } from "./contacts";
 import { isValidISODate } from "./validation";
 
@@ -45,7 +45,7 @@ export const listPending = query({
   ),
   handler: async (ctx, { localTodayISO }) => {
     const cutoff = resolveCutoff(localTodayISO);
-    const currentUser = await getMockCurrentUser(ctx);
+    const currentUser = await requireCurrentUser(ctx);
 
     const rows = await ctx.db
       .query("seguimientos")
@@ -102,7 +102,7 @@ export const listByCliente = query({
     const contact = await ctx.db.get(clienteId);
     if (!contact) return [];
 
-    const currentUser = await getMockCurrentUser(ctx);
+    const currentUser = await requireCurrentUser(ctx);
     if (!(await isContactVisible(ctx, contact, currentUser))) return [];
 
     const rows = await ctx.db
@@ -171,7 +171,7 @@ export const create = mutation({
 // "existe pero no es tuyo" en el mensaje de error, para no filtrar por el
 // mensaje si un id es válido o no.
 async function loadAuthorized(ctx: QueryCtx | MutationCtx, id: Id<"seguimientos">) {
-  const currentUser = await getMockCurrentUser(ctx);
+  const currentUser = await requireCurrentUser(ctx);
   const seguimiento = await ctx.db.get(id);
   const authorized =
     seguimiento !== null &&

@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { getMockCurrentUser } from "./mockSession";
+import { requireCurrentUser } from "./mockSession";
 import { loadAuthorizedContact, isContactVisible } from "./contacts";
 import { isValidISODate } from "./validation";
 
@@ -26,7 +26,7 @@ export const list = query({
     })
   ),
   handler: async (ctx) => {
-    const currentUser = await getMockCurrentUser(ctx);
+    const currentUser = await requireCurrentUser(ctx);
     const rows = await ctx.db.query("ventas").collect();
     const visible =
       currentUser.rol === "propietaria" ? rows : rows.filter((r) => r.autor === currentUser._id);
@@ -77,7 +77,7 @@ export const listByCliente = query({
     const contact = await ctx.db.get(clienteId);
     if (!contact) return [];
 
-    const currentUser = await getMockCurrentUser(ctx);
+    const currentUser = await requireCurrentUser(ctx);
     if (!(await isContactVisible(ctx, contact, currentUser))) return [];
 
     const rows = await ctx.db
@@ -121,7 +121,7 @@ export const create = mutation({
     if (!(importe > 0)) throw new Error("El importe debe ser mayor que 0.");
     if (!isValidISODate(fecha)) throw new Error("Fecha no válida.");
 
-    const currentUser = await getMockCurrentUser(ctx);
+    const currentUser = await requireCurrentUser(ctx);
     return await ctx.db.insert("ventas", {
       clienteId,
       concepto: concepto_,

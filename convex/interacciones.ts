@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { query, mutation } from "./_generated/server";
-import { getMockCurrentUser } from "./mockSession";
+import { requireCurrentUser } from "./mockSession";
 import { loadAuthorizedContact, isContactVisible } from "./contacts";
 import { isValidISODate } from "./validation";
 
@@ -31,7 +31,7 @@ export const listByCliente = query({
     const contact = await ctx.db.get(clienteId);
     if (!contact) return [];
 
-    const currentUser = await getMockCurrentUser(ctx);
+    const currentUser = await requireCurrentUser(ctx);
     if (!(await isContactVisible(ctx, contact, currentUser))) return [];
 
     const rows = await ctx.db
@@ -72,7 +72,7 @@ export const create = mutation({
     if (!texto_) throw new Error("La nota es obligatoria.");
     if (!isValidISODate(fecha)) throw new Error("Fecha no válida.");
 
-    const currentUser = await getMockCurrentUser(ctx);
+    const currentUser = await requireCurrentUser(ctx);
     return await ctx.db.insert("interacciones", {
       clienteId,
       tipo,

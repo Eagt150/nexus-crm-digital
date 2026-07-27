@@ -1,41 +1,29 @@
 "use client";
 
+import { useConvexAuth } from "convex/react";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useSyncExternalStore, type ReactNode } from "react";
-import { hasSession } from "@/lib/session";
+import { useEffect, type ReactNode } from "react";
 
-function subscribe() {
-  // localStorage no dispara eventos en la misma pestaña que la modifica;
-  // no hace falta escuchar cambios en vivo, solo leer el valor una vez
-  // después de montar (ver getSnapshot).
-  return () => {};
-}
-
-function getServerSnapshot() {
-  return false;
-}
-
-// INTEGRATION POINT (MCP-28): reemplazar por la comprobación de sesión real
-// (server-side, vía middleware o layout de servidor) cuando exista un
-// proveedor de auth. Hoy solo mira si `/login` guardó algo en localStorage.
-// `useSyncExternalStore` evita el desajuste de hidratación: el servidor
-// siempre "ve" `false` (no hay `window`) y el cliente relee el valor real
-// justo después de montar.
+// Sesión real de Auth.js (Google + credenciales) — reemplaza la sesión de
+// localStorage sin firma que había antes. Ojo: Auth.js y Convex tienen
+// procesos de autenticación DISTINTOS y no sincronizados automáticamente.
+// `useSession()` puede reportar "authenticated" antes de que Convex termine
+// de aplicar el JWT a su propia conexión (ver ConvexClientProvider.tsx); si
+// renderizamos los hijos en ese momento, sus queries se disparan sin
+// identidad todavía y explotan contra `requireCurrentUser` en el backend.
+// `useConvexAuth()` (de convex/react) refleja el estado de auth interno de
+// Convex mismo, así que hay que esperar a AMBOS antes de renderizar.
 export function AuthGate({ children }: { children: ReactNode }) {
+  const { status } = useSession();
+  const { isLoading: convexLoading, isAuthenticated: convexAuthenticated } = useConvexAuth();
   const router = useRouter();
-  const sessionPresent = useSyncExternalStore(subscribe, hasSession, getServerSnapshot);
 
   useEffect(() => {
-    // OJO: comprobar `hasSession()` en vivo, no cerrar sobre `sessionPresent`.
-    // En un montaje "duro" (URL directa o refresh) este efecto puede correr
-    // en el mismo commit que la resincronización interna de
-    // `useSyncExternalStore` (que aún no terminó de propagar el valor real
-    // a `sessionPresent` en este render). Si este efecto confiaba en la
-    // variable cerrada, veía el `false` inicial del servidor y redirigía a
-    // /login aunque sí hubiera sesión.
-    if (!hasSession()) router.replace("/login");
-  }, [router]);
+    if (status === "unauthenticated") router.replace("/login");
+  }, [status, router]);
 
-  if (!sessionPresent) return null;
+  if (status !== "authenticated") return null;
+  if (convexLoading || !convexAuthenticated) return null;
   return <>{children}</>;
 }
