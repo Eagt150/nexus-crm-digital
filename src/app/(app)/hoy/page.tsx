@@ -3,56 +3,29 @@
 import { useMutation, useQuery } from "convex/react";
 import { CheckCircle2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { Overlay } from "@/components/ui/Overlay";
 import { Button } from "@/components/ui/Button";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
-import { ClientePicker } from "@/components/clientes/ClientePicker";
+import { ClientPickerFlow } from "@/components/clientes/ClientPickerFlow";
 import { InteraccionForm } from "@/components/interacciones/InteraccionForm";
 import { SeguimientoForm } from "@/components/seguimientos/SeguimientoForm";
+import { VentaForm } from "@/components/ventas/VentaForm";
 import { FollowUpRow } from "@/components/hoy/FollowUpRow";
 import { FollowUpSection } from "@/components/hoy/FollowUpSection";
-import { PlaceholderFormNotice } from "@/components/hoy/PlaceholderFormNotice";
 import { QuickActionsGrid, type QuickAction } from "@/components/hoy/QuickActionsGrid";
 import { useToast } from "@/components/toast/ToastProvider";
 import { todayEyebrow, todayISO } from "@/lib/date";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
 
-// Shell compartido por los overlays que se abren desde Hoy sin cliente
-// fijado ("interaccion", "tarea"): primero el picker, y una vez elegido el
-// cliente, el encabezado "Cliente: X Cambiar" + el formulario que corresponda.
-function renderClientPickerFlow(
-  cliente: { id: Id<"contacts">; nombre: string } | null,
-  onPick: (id: Id<"contacts">, nombre: string) => void,
-  onChangeCliente: () => void,
-  renderForm: (clienteId: Id<"contacts">) => ReactNode
-) {
-  if (cliente === null) return <ClientePicker onSelect={onPick} />;
-  return (
-    <>
-      <p className="mb-3 text-sm text-muted">
-        Cliente: <span className="font-medium text-text">{cliente.nombre}</span>{" "}
-        <button
-          type="button"
-          className="text-primary hover:underline"
-          onClick={onChangeCliente}
-        >
-          Cambiar
-        </button>
-      </p>
-      {renderForm(cliente.id)}
-    </>
-  );
-}
-
-const OVERLAY_META: Record<QuickAction, { title: string; ticket: string }> = {
-  tarea: { title: "Nueva tarea", ticket: "P-09" }, // TODO(P-09): reemplazar por el formulario real
-  interaccion: { title: "Anotar interacción", ticket: "P-06" }, // TODO(P-06): reemplazar por el formulario real
-  venta: { title: "Registrar venta", ticket: "P-10" }, // TODO(P-10): reemplazar por el formulario real
-  cliente: { title: "Nuevo cliente", ticket: "P-05" }, // TODO(P-05): reemplazar por el formulario real
+const OVERLAY_META: Record<QuickAction, { title: string }> = {
+  tarea: { title: "Nueva tarea" },
+  interaccion: { title: "Anotar interacción" },
+  venta: { title: "Registrar venta" },
+  cliente: { title: "Nuevo cliente" },
 };
 
 export default function HoyPage() {
@@ -64,6 +37,10 @@ export default function HoyPage() {
     nombre: string;
   } | null>(null);
   const [tareaCliente, setTareaCliente] = useState<{
+    id: Id<"contacts">;
+    nombre: string;
+  } | null>(null);
+  const [ventaCliente, setVentaCliente] = useState<{
     id: Id<"contacts">;
     nombre: string;
   } | null>(null);
@@ -93,6 +70,16 @@ export default function HoyPage() {
   function handleTareaSaved() {
     handleCloseTarea();
     showToast("Seguimiento programado");
+  }
+
+  function handleCloseVenta() {
+    setActiveOverlay(null);
+    setVentaCliente(null);
+  }
+
+  function handleVentaSaved() {
+    handleCloseVenta();
+    showToast("Venta registrada");
   }
 
   const data = useQuery(api.seguimientos.listPending, { localTodayISO });
@@ -208,7 +195,9 @@ export default function HoyPage() {
             ? handleCloseInteraccion
             : activeOverlay === "tarea"
               ? handleCloseTarea
-              : () => setActiveOverlay(null)
+              : activeOverlay === "venta"
+                ? handleCloseVenta
+                : () => setActiveOverlay(null)
         }
         title={activeOverlay ? OVERLAY_META[activeOverlay].title : ""}
       >
@@ -219,40 +208,41 @@ export default function HoyPage() {
             onCancel={() => setActiveOverlay(null)}
           />
         ) : activeOverlay === "interaccion" ? (
-          renderClientPickerFlow(
-            interaccionCliente,
-            (id, nombre) => setInteraccionCliente({ id, nombre }),
-            () => setInteraccionCliente(null),
-            (clienteId) => (
+          <ClientPickerFlow
+            cliente={interaccionCliente}
+            onPick={(id, nombre) => setInteraccionCliente({ id, nombre })}
+            onChangeCliente={() => setInteraccionCliente(null)}
+            renderForm={(clienteId) => (
               <InteraccionForm
                 clienteId={clienteId}
                 onSaved={handleInteraccionSaved}
                 onCancel={handleCloseInteraccion}
               />
-            )
-          )
+            )}
+          />
         ) : activeOverlay === "tarea" ? (
-          renderClientPickerFlow(
-            tareaCliente,
-            (id, nombre) => setTareaCliente({ id, nombre }),
-            () => setTareaCliente(null),
-            (clienteId) => (
+          <ClientPickerFlow
+            cliente={tareaCliente}
+            onPick={(id, nombre) => setTareaCliente({ id, nombre })}
+            onChangeCliente={() => setTareaCliente(null)}
+            renderForm={(clienteId) => (
               <SeguimientoForm
                 clienteId={clienteId}
                 onSaved={handleTareaSaved}
                 onCancel={handleCloseTarea}
               />
-            )
-          )
-        ) : (
-          activeOverlay && (
-            <PlaceholderFormNotice
-              label={OVERLAY_META[activeOverlay].title}
-              ticket={OVERLAY_META[activeOverlay].ticket}
-              onClose={() => setActiveOverlay(null)}
-            />
-          )
-        )}
+            )}
+          />
+        ) : activeOverlay === "venta" ? (
+          <ClientPickerFlow
+            cliente={ventaCliente}
+            onPick={(id, nombre) => setVentaCliente({ id, nombre })}
+            onChangeCliente={() => setVentaCliente(null)}
+            renderForm={(clienteId) => (
+              <VentaForm clienteId={clienteId} onSaved={handleVentaSaved} onCancel={handleCloseVenta} />
+            )}
+          />
+        ) : null}
       </Overlay>
     </div>
   );

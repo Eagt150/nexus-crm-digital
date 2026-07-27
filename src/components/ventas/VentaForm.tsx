@@ -23,11 +23,12 @@ interface VentaFormProps {
   onCancel: () => void;
 }
 
-// Overlay "Registrar venta" (P-10/MCP-37), siempre abierto desde una ficha
-// con el cliente ya fijado. `estado` usa ChipGroup con un valor inicial
-// ("oportunidad") — como ChipGroup permite deseleccionar con reclick, un
-// `null` accidental se trata como inválido en la validación de submit
-// (igual que el email en ClienteForm), en vez de modificar el componente.
+// Overlay "Registrar venta" (P-10/MCP-37). `clienteId` siempre llega ya
+// resuelto: desde la ficha viene fijado por la ruta, y desde Hoy/Ventas lo
+// resuelve antes ClientPickerFlow. `estado` usa ChipGroup con un valor
+// inicial ("oportunidad") — como ChipGroup permite deseleccionar con
+// reclick, un `null` accidental se trata como inválido en la validación de
+// submit (igual que el email en ClienteForm), en vez de modificar el componente.
 export function VentaForm({ clienteId, onSaved, onCancel }: VentaFormProps) {
   const [concepto, setConcepto] = useState("");
   const [importe, setImporte] = useState("");
