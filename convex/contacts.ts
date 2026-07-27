@@ -59,18 +59,42 @@ async function lastInteractionISO(ctx: QueryCtx, clienteId: Doc<"contacts">["_id
   return interacciones.reduce((latest, i) => (i.fecha > latest ? i.fecha : latest), interacciones[0].fecha);
 }
 
-// Devuelve solo los campos que la ficha placeholder necesita mostrar (no
-// telefono/email/nota) y aplica el mismo contrato de autorización que
-// visibleContacts: `propietaria` puede ver cualquier contacto; `comercial`
-// solo los contactos con los que tiene al menos un seguimiento propio o que
-// él mismo dio de alta. No distingue "no existe" de "no autorizado" (ambos
-// devuelven null) para no filtrar por la respuesta si un id es válido o no.
+// Chequeo de visibilidad compartido por getById/loadAuthorizedContact y por
+// las queries listByCliente de interacciones/seguimientos/ventas:
+// `propietaria` ve cualquier contacto; `comercial` solo los que tienen al
+// menos un seguimiento a su nombre, o que él mismo dio de alta.
+export async function isContactVisible(
+  ctx: QueryCtx | MutationCtx,
+  contact: Doc<"contacts">,
+  currentUser: Doc<"users">
+): Promise<boolean> {
+  if (currentUser.rol === "propietaria") return true;
+  const ownFollowUp = await ctx.db
+    .query("seguimientos")
+    .withIndex("by_cliente", (q) => q.eq("clienteId", contact._id))
+    .filter((q) => q.eq(q.field("responsable"), currentUser._id))
+    .first();
+  const ownCreated = contact.creadoPor === currentUser._id;
+  return ownFollowUp !== null || ownCreated;
+}
+
+// Devuelve los campos que la cabecera de la ficha (MCP-32) y el precargado
+// de ClienteForm mode="edit" necesitan. No distingue "no existe" de "no
+// autorizado" (ambos devuelven null) para no filtrar por la respuesta si un
+// id es válido o no. `estado` se devuelve tal cual lo guarda el schema
+// (string suelto, no la unión cerrada) — acotarlo es responsabilidad del
+// frontend (ver `parseEstadoCliente` en `src/lib/estado.ts`).
 export const getById = query({
   args: { id: v.id("contacts") },
   returns: v.union(
     v.object({
       id: v.id("contacts"),
       nombre: v.string(),
+      empresa: v.optional(v.string()),
+      telefono: v.optional(v.string()),
+      email: v.optional(v.string()),
+      canalOrigen: v.optional(CANAL_ORIGEN),
+      nota: v.optional(v.string()),
       estado: v.optional(v.string()),
     }),
     v.null()
@@ -80,39 +104,33 @@ export const getById = query({
     if (!contact) return null;
 
     const currentUser = await getMockCurrentUser(ctx);
-    if (currentUser.rol !== "propietaria") {
-      const ownFollowUp = await ctx.db
-        .query("seguimientos")
-        .withIndex("by_cliente", (q) => q.eq("clienteId", id))
-        .filter((q) => q.eq(q.field("responsable"), currentUser._id))
-        .first();
-      const ownCreated = contact.creadoPor === currentUser._id;
-      if (!ownFollowUp && !ownCreated) return null;
-    }
+    if (!(await isContactVisible(ctx, contact, currentUser))) return null;
 
-    return { id: contact._id, nombre: contact.nombre, estado: contact.estado };
+    return {
+      id: contact._id,
+      nombre: contact.nombre,
+      empresa: contact.empresa,
+      telefono: contact.telefono,
+      email: contact.email,
+      canalOrigen: contact.canalOrigen,
+      nota: contact.nota,
+      estado: contact.estado,
+    };
   },
 });
 
-// Autoriza y carga un contacto para mutarlo, con el mismo contrato de
-// visibilidad que getById/list: `propietaria` puede editar cualquiera;
-// `comercial` solo los que tiene asignados (seguimiento propio) o que él
-// mismo dio de alta. No distingue "no existe" de "no autorizado" en el
-// mensaje de error, para no filtrar por la respuesta si un id es válido.
-async function loadAuthorizedContact(ctx: QueryCtx | MutationCtx, id: Id<"contacts">) {
+// Autoriza y carga un contacto para mutarlo (o para insertar actividad sobre
+// él: interacciones/seguimientos/ventas), con el mismo contrato de
+// visibilidad que getById/list (ver `isContactVisible`). No distingue "no
+// existe" de "no autorizado" en el mensaje de error, para no filtrar por la
+// respuesta si un id es válido. A diferencia de las queries de lectura (que
+// devuelven null/[] y nunca lanzan), esta función SÍ lanza porque solo la
+// usan mutations.
+export async function loadAuthorizedContact(ctx: QueryCtx | MutationCtx, id: Id<"contacts">) {
   const currentUser = await getMockCurrentUser(ctx);
   const contact = await ctx.db.get(id);
   if (!contact) throw new Error("No autorizado");
-
-  if (currentUser.rol !== "propietaria") {
-    const ownFollowUp = await ctx.db
-      .query("seguimientos")
-      .withIndex("by_cliente", (q) => q.eq("clienteId", id))
-      .filter((q) => q.eq(q.field("responsable"), currentUser._id))
-      .first();
-    const ownCreated = contact.creadoPor === currentUser._id;
-    if (!ownFollowUp && !ownCreated) throw new Error("No autorizado");
-  }
+  if (!(await isContactVisible(ctx, contact, currentUser))) throw new Error("No autorizado");
 
   return contact;
 }

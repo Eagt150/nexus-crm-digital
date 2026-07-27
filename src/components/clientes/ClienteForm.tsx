@@ -11,8 +11,8 @@ import type { Id } from "../../../convex/_generated/dataModel";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-type CanalOrigen = "web" | "redes" | "email" | "whatsapp";
-type EstadoCliente = "activo" | "seguimiento" | "inactivo";
+export type CanalOrigen = "web" | "redes" | "email" | "whatsapp";
+export type EstadoCliente = "activo" | "seguimiento" | "inactivo";
 
 const CANAL_OPTIONS: { value: CanalOrigen; label: string }[] = [
   { value: "web", label: "Web" },
@@ -27,7 +27,7 @@ const ESTADO_OPTIONS: { value: EstadoCliente; label: string }[] = [
   { value: "inactivo", label: "Inactivo" },
 ];
 
-interface ClienteEditData {
+export interface ClienteEditData {
   id: Id<"contacts">;
   nombre: string;
   empresa?: string;

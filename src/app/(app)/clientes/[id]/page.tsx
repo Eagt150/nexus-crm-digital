@@ -1,4 +1,4 @@
-import { ClienteFichaPlaceholder } from "./ClienteFichaPlaceholder";
+import { ClienteFicha } from "./ClienteFicha";
 
 export default async function ClienteFichaPage({
   params,
@@ -6,5 +6,5 @@ export default async function ClienteFichaPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <ClienteFichaPlaceholder id={id} />;
+  return <ClienteFicha id={id} />;
 }

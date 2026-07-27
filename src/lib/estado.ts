@@ -1,4 +1,17 @@
+import type { EstadoCliente } from "@/components/clientes/ClienteForm";
+
 type BadgeTone = "success" | "warning" | "error" | "info" | "neutral";
+
+const ESTADO_CLIENTE_VALUES: readonly EstadoCliente[] = ["activo", "seguimiento", "inactivo"];
+
+// `contacts.getById` devuelve `estado` como el string suelto que guarda el
+// schema (`v.optional(v.string())`), pero `ClienteForm mode="edit"` espera la
+// unión cerrada de `EstadoCliente`. Acota aquí en vez de castear con `as` en
+// el caller, para no propagar un valor legacy/no reconocido como si fuera
+// válido.
+export function parseEstadoCliente(value?: string): EstadoCliente | undefined {
+  return ESTADO_CLIENTE_VALUES.find((v) => v === value);
+}
 
 export function estadoToBadgeTone(estado?: string): BadgeTone {
   switch (estado) {

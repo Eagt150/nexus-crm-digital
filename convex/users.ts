@@ -43,6 +43,20 @@ export const login = mutation({
   },
 });
 
+// Lista mínima de compañeros de equipo (id + nombre), para el selector
+// "Responsable" de "Programar seguimiento" (MCP-74). A diferencia de
+// `listAll`, no está restringida a `propietaria`: cualquier usuario en
+// sesión necesita ver a quién puede asignarle un seguimiento. No expone
+// email/rol para no filtrar más de lo necesario.
+export const listTeamMembers = query({
+  args: {},
+  returns: v.array(v.object({ id: v.id("users"), nombre: v.string() })),
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    return users.map((u) => ({ id: u._id, nombre: u.nombre }));
+  },
+});
+
 // Lista de usuarios para la pantalla de Equipo. Restringida a `propietaria`
 // en el servidor (no solo en la UI) siguiendo el mismo contrato de
 // autorización que el resto de queries de este archivo.
