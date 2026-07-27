@@ -15,6 +15,7 @@ export function ListRow({ avatar, title, subtitle, trailing, badge, onClick, cla
   const Comp = onClick ? "button" : "div";
   return (
     <Comp
+      type={onClick ? "button" : undefined}
       onClick={onClick}
       className={cn(
         "flex w-full items-center gap-3 px-5 py-4 text-left",

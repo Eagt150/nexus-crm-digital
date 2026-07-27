@@ -8,3 +8,7 @@ export function cn(...inputs: ClassValue[]) {
 export function formatEuro(amount: number): string {
   return `€${new Intl.NumberFormat("es-ES", { maximumFractionDigits: 0 }).format(amount)}`;
 }
+
+export function normalizePhone(value: string): string {
+  return value.replace(/[\s\-()]/g, "");
+}

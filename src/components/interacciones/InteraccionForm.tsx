@@ -26,9 +26,10 @@ interface InteraccionFormProps {
   onCancel: () => void;
 }
 
-// Overlay "Anotar interacción" (P-06/MCP-33), siempre abierto desde una
-// ficha con el cliente ya fijado — no incluye selector de cliente (esa
-// variante, para abrir desde Hoy, queda fuera de este plan). Sigue el mismo
+// Overlay "Anotar interacción" (P-06/MCP-33). Recibe siempre un clienteId ya
+// fijado — no incluye selector de cliente. Cuando se abre desde Hoy sin
+// cliente prefijado, el picker (ClientePicker) vive un paso antes en el
+// caller (hoy/page.tsx), no dentro de este formulario. Sigue el mismo
 // patrón que ClienteForm: no conoce Overlay/useToast, el caller decide.
 export function InteraccionForm({ clienteId, onSaved, onCancel }: InteraccionFormProps) {
   const currentUser = useCurrentUser();

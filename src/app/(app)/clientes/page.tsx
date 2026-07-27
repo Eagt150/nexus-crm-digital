@@ -15,12 +15,9 @@ import { ClienteForm } from "@/components/clientes/ClienteForm";
 import { useToast } from "@/components/toast/ToastProvider";
 import { lastContactLabel, todayISO } from "@/lib/date";
 import { estadoToBadgeTone } from "@/lib/estado";
+import { normalizePhone } from "@/lib/utils";
 import { api } from "../../../../convex/_generated/api";
 import type { Id } from "../../../../convex/_generated/dataModel";
-
-function normalizePhone(value: string) {
-  return value.replace(/[\s\-()]/g, "");
-}
 
 export default function ClientesPage() {
   const router = useRouter();
