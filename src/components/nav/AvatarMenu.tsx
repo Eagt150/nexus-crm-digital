@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { signOut } from "next-auth/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "@/lib/utils";
-import { signOutStub } from "@/lib/session";
 
 interface AvatarMenuProps {
   trigger: ReactNode;
@@ -71,7 +71,7 @@ export function AvatarMenu({ trigger, menuClassName }: AvatarMenuProps) {
             role="menuitem"
             onClick={() => {
               setOpen(false);
-              signOutStub();
+              signOut({ callbackUrl: "/login" });
             }}
             className="block w-full px-3 py-2 text-left text-sm text-text hover:bg-surface-2"
           >

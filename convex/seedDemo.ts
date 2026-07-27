@@ -1,5 +1,5 @@
 import { mutation } from "./_generated/server";
-import { MOCK_SESSION_EMAIL } from "./mockSession";
+import { DEMO_OWNER_EMAIL } from "./mockSession";
 
 const CARLOS_EMAIL = "carlos@vibecrm.dev";
 // DEMO ONLY — contraseña de prueba en texto plano para poder iniciar sesión
@@ -86,7 +86,7 @@ export const seedDemoUsers = mutation({
   handler: async (ctx) => {
     const marta = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", MOCK_SESSION_EMAIL))
+      .withIndex("by_email", (q) => q.eq("email", DEMO_OWNER_EMAIL))
       .unique();
     const carlos = await ctx.db
       .query("users")
@@ -106,7 +106,7 @@ export const seedDemoUsers = mutation({
 
     const martaId = await ctx.db.insert("users", {
       nombre: "Marta López",
-      email: MOCK_SESSION_EMAIL,
+      email: DEMO_OWNER_EMAIL,
       rol: "propietaria",
       password: DEMO_PASSWORD,
     });
@@ -130,7 +130,7 @@ export const seedDemoSeguimientos = mutation({
 
     const marta = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", MOCK_SESSION_EMAIL))
+      .withIndex("by_email", (q) => q.eq("email", DEMO_OWNER_EMAIL))
       .unique();
     const carlos = await ctx.db
       .query("users")
@@ -212,7 +212,7 @@ export const seedDemoInteracciones = mutation({
 
     const marta = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", MOCK_SESSION_EMAIL))
+      .withIndex("by_email", (q) => q.eq("email", DEMO_OWNER_EMAIL))
       .unique();
     const carlos = await ctx.db
       .query("users")
@@ -300,7 +300,7 @@ export const seedDemoVentas = mutation({
 
     const marta = await ctx.db
       .query("users")
-      .withIndex("by_email", (q) => q.eq("email", MOCK_SESSION_EMAIL))
+      .withIndex("by_email", (q) => q.eq("email", DEMO_OWNER_EMAIL))
       .unique();
     const carlos = await ctx.db
       .query("users")

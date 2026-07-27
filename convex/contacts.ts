@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import type { Doc, Id } from "./_generated/dataModel";
 import { query, mutation, type QueryCtx, type MutationCtx } from "./_generated/server";
-import { getMockCurrentUser } from "./mockSession";
+import { requireCurrentUser } from "./mockSession";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CANAL_ORIGEN = v.union(
@@ -103,7 +103,7 @@ export const getById = query({
     const contact = await ctx.db.get(id);
     if (!contact) return null;
 
-    const currentUser = await getMockCurrentUser(ctx);
+    const currentUser = await requireCurrentUser(ctx);
     if (!(await isContactVisible(ctx, contact, currentUser))) return null;
 
     return {
@@ -127,7 +127,7 @@ export const getById = query({
 // devuelven null/[] y nunca lanzan), esta función SÍ lanza porque solo la
 // usan mutations.
 export async function loadAuthorizedContact(ctx: QueryCtx | MutationCtx, id: Id<"contacts">) {
-  const currentUser = await getMockCurrentUser(ctx);
+  const currentUser = await requireCurrentUser(ctx);
   const contact = await ctx.db.get(id);
   if (!contact) throw new Error("No autorizado");
   if (!(await isContactVisible(ctx, contact, currentUser))) throw new Error("No autorizado");
@@ -146,7 +146,7 @@ export const create = mutation({
   },
   returns: v.id("contacts"),
   handler: async (ctx, args) => {
-    const currentUser = await getMockCurrentUser(ctx);
+    const currentUser = await requireCurrentUser(ctx);
     const nombre = args.nombre.trim();
     const telefono = normalizeOptional(args.telefono);
     const email = normalizeOptional(args.email);
@@ -210,7 +210,7 @@ export const list = query({
     })
   ),
   handler: async (ctx) => {
-    const currentUser = await getMockCurrentUser(ctx);
+    const currentUser = await requireCurrentUser(ctx);
     const contacts = await visibleContacts(ctx, currentUser);
 
     const withLastContact = await Promise.all(

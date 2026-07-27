@@ -1,20 +1,18 @@
 "use client";
 
-import { useMutation } from "convex/react";
+import { signIn, useSession } from "next-auth/react";
 import { Eye, EyeOff } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { IconButton } from "@/components/ui/IconButton";
 import { Input } from "@/components/ui/Input";
-import { hasSession, saveSession } from "@/lib/session";
-import { api } from "../../../convex/_generated/api";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginPage() {
   const router = useRouter();
-  const login = useMutation(api.users.login);
+  const { status } = useSession();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,8 +23,8 @@ export default function LoginPage() {
   const [showForgotHint, setShowForgotHint] = useState(false);
 
   useEffect(() => {
-    if (hasSession()) router.replace("/hoy");
-  }, [router]);
+    if (status === "authenticated") router.replace("/hoy");
+  }, [status, router]);
 
   const emailValid = EMAIL_RE.test(email);
   const passwordValid = password.length > 0;
@@ -39,12 +37,15 @@ export default function LoginPage() {
 
     setSubmitting(true);
     try {
-      const user = await login({ email: email.trim(), password });
-      if (!user) {
+      const result = await signIn("credentials", {
+        email: email.trim(),
+        password,
+        redirect: false,
+      });
+      if (!result || result.error) {
         setAuthError("Email o contraseña incorrectos.");
         return;
       }
-      saveSession(user);
       router.replace("/hoy");
     } catch {
       setAuthError("No se pudo iniciar sesión. Inténtalo de nuevo.");
@@ -112,6 +113,21 @@ export default function LoginPage() {
             </Button>
           </form>
 
+          <div className="my-5 flex items-center gap-3 text-xs text-subtle">
+            <span className="h-px flex-1 bg-border" />
+            <span>o</span>
+            <span className="h-px flex-1 bg-border" />
+          </div>
+
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full"
+            onClick={() => signIn("google", { callbackUrl: "/hoy" })}
+          >
+            Continuar con Google
+          </Button>
+
           <div className="mt-4 text-center">
             <button
               type="button"
@@ -129,7 +145,7 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-xs text-subtle">
-          Demo local — marta@vibecrm.dev / vibecrm2024
+          Demo local — edisoncodex@gmail.com / vibecrm2024
         </p>
       </div>
     </div>
