@@ -2,9 +2,12 @@ import { mutation } from "./_generated/server";
 import { DEMO_OWNER_EMAIL } from "./mockSession";
 
 const CARLOS_EMAIL = "carlos@vibecrm.dev";
-// DEMO ONLY — contraseña de prueba en texto plano para poder iniciar sesión
-// localmente (ver convex/schema.ts `users.password`).
-const DEMO_PASSWORD = "vibecrm2024";
+// DEMO ONLY — hash bcrypt (cost 10) precalculado en local de la contraseña
+// demo "vibecrm2024". Se precalcula así (en vez de llamar a bcrypt aquí)
+// porque este archivo sigue siendo una mutation normal, sin el runtime Node
+// que bcrypt necesita — ver convex/authActions.ts y
+// convex/hashPasswordsMigration.ts, que sí corren en runtime Node.
+const DEMO_PASSWORD_HASH = "$2b$10$iRP4pEcyuXMNpNFiZcqZYOr69JKBlmOT1UQk92SqIbre6k6vhqhjS";
 
 // DEMO ONLY — inserta datos ficticios para verificar la conexión con Convex
 // desde el dashboard. Borra estas mutations y las filas que crean cuando ya
@@ -94,8 +97,8 @@ export const seedDemoUsers = mutation({
       .unique();
 
     if (marta && carlos) {
-      if (!marta.password) await ctx.db.patch(marta._id, { password: DEMO_PASSWORD });
-      if (!carlos.password) await ctx.db.patch(carlos._id, { password: DEMO_PASSWORD });
+      if (!marta.passwordHash) await ctx.db.patch(marta._id, { passwordHash: DEMO_PASSWORD_HASH });
+      if (!carlos.passwordHash) await ctx.db.patch(carlos._id, { passwordHash: DEMO_PASSWORD_HASH });
       return { marta: marta._id, carlos: carlos._id };
     }
     if (marta || carlos) {
@@ -108,13 +111,13 @@ export const seedDemoUsers = mutation({
       nombre: "Marta López",
       email: DEMO_OWNER_EMAIL,
       rol: "propietaria",
-      password: DEMO_PASSWORD,
+      passwordHash: DEMO_PASSWORD_HASH,
     });
     const carlosId = await ctx.db.insert("users", {
       nombre: "Carlos Ruiz Comercial",
       email: CARLOS_EMAIL,
       rol: "comercial",
-      password: DEMO_PASSWORD,
+      passwordHash: DEMO_PASSWORD_HASH,
     });
     return { marta: martaId, carlos: carlosId };
   },

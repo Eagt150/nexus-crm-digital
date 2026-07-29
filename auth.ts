@@ -25,7 +25,18 @@ async function mintConvexToken(email: string): Promise<string> {
   const now = Math.floor(Date.now() / 1000);
   const normalized = normalizeEmail(email);
 
-  return await new SignJWT({ email: normalized })
+  // Se consulta en cada minteo (no se cachea) para que un reset de
+  // contraseña invalide tokens ya emitidos casi de inmediato — ver el
+  // chequeo de `pwAt` en convex/mockSession.ts. Si esta consulta falla por
+  // cualquier motivo, no se debe emitir un token que un check de staleness
+  // no pueda verificar correctamente después: se deja fallar el signIn.
+  const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+  const passwordChangedAt = await client.action(api.users.getPasswordChangedAt, {
+    email: normalized,
+    secret: process.env.PROVISION_CHECK_SECRET!,
+  });
+
+  return await new SignJWT({ email: normalized, pwAt: passwordChangedAt ?? 0 })
     .setProtectedHeader({ alg: "RS256", kid: process.env.CONVEX_AUTH_KEY_ID, typ: "JWT" })
     .setIssuedAt(now)
     .setIssuer(issuer)
@@ -47,7 +58,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         if (typeof email !== "string" || typeof password !== "string") return null;
 
         const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
-        const user = await client.mutation(api.users.login, { email, password });
+        const user = await client.action(api.authActions.login, { email, password });
         if (!user) return null;
 
         return { id: user.id, name: user.nombre, email: user.email };
@@ -62,7 +73,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async signIn({ account, profile }) {
       if (account?.provider !== "google") return true;
       if (!profile?.email) return false;
-      if (profile.email_verified === false) return false;
+      // Estricto a propósito: rechaza también `undefined`, no solo `false`
+      // explícito (MCP-78) — Google siempre debería mandar un booleano real
+      // aquí, así que cualquier otra cosa se trata como no verificado.
+      if (profile.email_verified !== true) return false;
 
       const client = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
       return await client.action(api.users.checkProvisioned, {

@@ -19,10 +19,27 @@ export function normalizeEmail(email: string) {
 export async function getCurrentUserOrNull(ctx: QueryCtx | MutationCtx) {
   const identity = await ctx.auth.getUserIdentity();
   if (!identity?.email) return null;
-  return await ctx.db
+  const user = await ctx.db
     .query("users")
     .withIndex("by_email", (q) => q.eq("email", normalizeEmail(identity.email!)))
     .unique();
+  if (!user) return null;
+
+  // Invalida sesiones/tokens de Convex emitidos antes del último reset de
+  // contraseña (MCP-78) — `pwAt` es un claim propio que auth.ts embebe en
+  // cada minteo (ver mintConvexToken), no un campo estándar de Convex.
+  // Fail-closed a propósito: si el usuario ya tuvo un reset real
+  // (`passwordChangedAt` seteado) pero el token no trae `pwAt` como número
+  // (ausente o de otro tipo — ej. un token viejo minteado antes de que este
+  // claim existiera), se trata igual como sesión vieja/inválida.
+  if (user.passwordChangedAt !== undefined) {
+    const pwAt = (identity as { pwAt?: unknown }).pwAt;
+    if (typeof pwAt !== "number" || pwAt < user.passwordChangedAt) {
+      return null;
+    }
+  }
+
+  return user;
 }
 
 // Igual que getCurrentUserOrNull pero lanza si no hay usuario autenticado y
