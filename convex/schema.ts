@@ -64,4 +64,21 @@ export default defineSchema({
     fecha: v.string(), // ISO date
     autor: v.id("users"),
   }).index("by_cliente", ["clienteId"]),
+
+  // Solo aplica al login por contraseña (Credentials) — MCP-77. `token` es
+  // de un solo uso y de alta entropía (32 bytes aleatorios), así que no
+  // hace falta hashearlo para que esta tabla sea segura contra fuerza bruta.
+  // `code` (6 dígitos) es la alternativa manual al link — tiene mucha menos
+  // entropía, por eso `attempts` limita cuántas veces se puede probar antes
+  // de invalidarlo (ver MAX_CODE_ATTEMPTS en convex/passwordReset.ts).
+  passwordResets: defineTable({
+    userId: v.id("users"),
+    token: v.string(),
+    code: v.string(),
+    expiresAt: v.number(),
+    usedAt: v.optional(v.number()),
+    attempts: v.optional(v.number()),
+  })
+    .index("by_token", ["token"])
+    .index("by_user", ["userId"]),
 });

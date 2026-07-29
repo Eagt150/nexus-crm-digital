@@ -2,6 +2,7 @@
 
 import { signIn, useSession } from "next-auth/react";
 import { Eye, EyeOff } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
 import { Button } from "@/components/ui/Button";
@@ -20,7 +21,6 @@ export default function LoginPage() {
   const [submitting, setSubmitting] = useState(false);
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
-  const [showForgotHint, setShowForgotHint] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated") router.replace("/hoy");
@@ -129,18 +129,12 @@ export default function LoginPage() {
           </Button>
 
           <div className="mt-4 text-center">
-            <button
-              type="button"
-              onClick={() => setShowForgotHint(true)}
+            <Link
+              href="/forgot-password"
               className="text-sm text-muted underline underline-offset-2 hover:text-text"
             >
               ¿Olvidaste tu contraseña?
-            </button>
-            {showForgotHint && (
-              <p className="mt-2 text-sm text-muted">
-                Pide a tu administradora que la restablezca por ti.
-              </p>
-            )}
+            </Link>
           </div>
         </div>
 
