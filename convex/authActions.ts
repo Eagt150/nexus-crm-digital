@@ -30,6 +30,10 @@ export const login = action({
     });
     if (!user) return null;
 
+    // Usuario eliminado desde /equipo (MCP-72) — mismo rechazo genérico que
+    // el resto de esta función, sin distinguir el motivo.
+    if (user.activo === false) return null;
+
     if (user.lockedUntil !== undefined && user.lockedUntil > Date.now()) {
       return null;
     }

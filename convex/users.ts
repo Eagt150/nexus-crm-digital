@@ -1,10 +1,19 @@
 import { v } from "convex/values";
-import { action, internalMutation, internalQuery, query } from "./_generated/server";
+import {
+  action,
+  internalMutation,
+  internalQuery,
+  mutation,
+  query,
+  type MutationCtx,
+} from "./_generated/server";
 import { internal } from "./_generated/api";
+import type { Id } from "./_generated/dataModel";
 import { getCurrentUserOrNull, normalizeEmail, requireCurrentUser } from "./mockSession";
 
 const MAX_LOGIN_ATTEMPTS = 5;
 const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 min
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const SAFE_USER_FIELDS = v.object({
   id: v.id("users"),
@@ -43,7 +52,10 @@ export const isProvisionedInternal = internalQuery({
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", normalizeEmail(email)))
       .unique();
-    return user !== null;
+    // activo === false (MCP-72, usuario eliminado desde /equipo) se trata
+    // igual que "no existe" — registro cerrado, así que tampoco puede
+    // volver a entrar por Google.
+    return user !== null && user.activo !== false;
   },
 });
 
@@ -103,6 +115,7 @@ export const getUserForLogin = internalQuery({
       rol: v.union(v.literal("propietaria"), v.literal("comercial")),
       passwordHash: v.optional(v.string()),
       lockedUntil: v.optional(v.number()),
+      activo: v.optional(v.boolean()),
     }),
     v.null()
   ),
@@ -119,6 +132,7 @@ export const getUserForLogin = internalQuery({
       rol: user.rol,
       passwordHash: user.passwordHash,
       lockedUntil: user.lockedUntil,
+      activo: user.activo,
     };
   },
 });
@@ -209,13 +223,18 @@ export const listTeamMembers = query({
   returns: v.array(v.object({ id: v.id("users"), nombre: v.string() })),
   handler: async (ctx) => {
     const users = await ctx.db.query("users").collect();
-    return users.map((u) => ({ id: u._id, nombre: u.nombre }));
+    // MCP-72: no ofrecer como responsable a alguien eliminado. No afecta a
+    // los seguimientos que ya le hubieran asignado antes.
+    return users
+      .filter((u) => u.activo !== false)
+      .map((u) => ({ id: u._id, nombre: u.nombre }));
   },
 });
 
 // Lista de usuarios para la pantalla de Equipo. Restringida a `propietaria`
 // en el servidor (no solo en la UI) siguiendo el mismo contrato de
-// autorización que el resto de queries de este archivo.
+// autorización que el resto de queries de este archivo. Filtra a activos:
+// un usuario "eliminado" (MCP-72) desaparece de esta pantalla.
 export const listAll = query({
   args: {},
   returns: v.array(SAFE_USER_FIELDS),
@@ -224,6 +243,127 @@ export const listAll = query({
     if (currentUser.rol !== "propietaria") return [];
 
     const users = await ctx.db.query("users").collect();
-    return users.map((u) => ({ id: u._id, nombre: u.nombre, email: u.email, rol: u.rol }));
+    return users
+      .filter((u) => u.activo !== false)
+      .map((u) => ({ id: u._id, nombre: u.nombre, email: u.email, rol: u.rol }));
+  },
+});
+
+// --- Gestión de usuarios (MCP-72) ---------------------------------------
+
+// Fuente de verdad única para "¿sigue quedando al menos una propietaria
+// activa tras este cambio?" — relee todo en vivo dentro de la misma
+// mutation que va a aplicar el cambio (nunca un conteo calculado antes),
+// para que dos cambios concurrentes (ej. dos propietarias degradándose/
+// eliminándose mutuamente al mismo tiempo) no puedan dejar el equipo sin
+// ningún admin: Convex serializa estas mutations sobre la tabla `users`,
+// así que la segunda en aplicarse siempre ve el resultado de la primera.
+async function assertKeepsActivePropietaria(ctx: MutationCtx, excludeUserId: Id<"users">) {
+  const users = await ctx.db.query("users").collect();
+  const stillActive = users.some(
+    (u) => u._id !== excludeUserId && u.rol === "propietaria" && u.activo !== false
+  );
+  if (!stillActive) {
+    throw new Error("Debe quedar al menos una propietaria activa en el equipo");
+  }
+}
+
+async function assertEmailAvailable(ctx: MutationCtx, email: string, excludeUserId?: Id<"users">) {
+  if (!EMAIL_RE.test(email)) {
+    throw new Error("Introduce un email válido");
+  }
+  const existing = await ctx.db
+    .query("users")
+    .withIndex("by_email", (q) => q.eq("email", email))
+    .unique();
+  if (existing && existing._id !== excludeUserId) {
+    throw new Error("Ya existe un usuario con ese email");
+  }
+}
+
+// Crea un usuario nuevo como cuenta solo-Google (sin `passwordHash`): en
+// cuanto la fila existe, `checkProvisioned` ya lo deja entrar por Google de
+// inmediato, sin ningún paso adicional (criterio de aceptación de MCP-72).
+// Si en el futuro alguien necesita login por contraseña, ya existe
+// "olvidé mi contraseña" para configurarla.
+export const createUser = mutation({
+  args: {
+    nombre: v.string(),
+    email: v.string(),
+    rol: v.union(v.literal("propietaria"), v.literal("comercial")),
+  },
+  returns: SAFE_USER_FIELDS,
+  handler: async (ctx, { nombre, email, rol }) => {
+    const currentUser = await requireCurrentUser(ctx);
+    if (currentUser.rol !== "propietaria") {
+      throw new Error("Solo la propietaria puede gestionar el equipo");
+    }
+
+    const normalized = normalizeEmail(email);
+    await assertEmailAvailable(ctx, normalized);
+
+    const id = await ctx.db.insert("users", {
+      nombre,
+      email: normalized,
+      rol,
+      activo: true,
+    });
+    return { id, nombre, email: normalized, rol };
+  },
+});
+
+export const updateUser = mutation({
+  args: {
+    userId: v.id("users"),
+    nombre: v.string(),
+    email: v.string(),
+    rol: v.union(v.literal("propietaria"), v.literal("comercial")),
+  },
+  returns: v.null(),
+  handler: async (ctx, { userId, nombre, email, rol }) => {
+    const currentUser = await requireCurrentUser(ctx);
+    if (currentUser.rol !== "propietaria") {
+      throw new Error("Solo la propietaria puede gestionar el equipo");
+    }
+
+    const target = await ctx.db.get(userId);
+    if (!target) throw new Error("Usuario no encontrado");
+
+    const normalized = normalizeEmail(email);
+    await assertEmailAvailable(ctx, normalized, userId);
+
+    if (target.rol === "propietaria" && rol !== "propietaria") {
+      await assertKeepsActivePropietaria(ctx, userId);
+    }
+
+    await ctx.db.patch(userId, { nombre, email: normalized, rol });
+    return null;
+  },
+});
+
+// "Eliminar" desde /equipo: soft-delete (`activo: false`), no borra la
+// fila — ver el comentario del campo en convex/schema.ts. Bloquea login
+// (Google y contraseña) y sesiones ya abiertas de inmediato.
+export const removeUser = mutation({
+  args: { userId: v.id("users") },
+  returns: v.null(),
+  handler: async (ctx, { userId }) => {
+    const currentUser = await requireCurrentUser(ctx);
+    if (currentUser.rol !== "propietaria") {
+      throw new Error("Solo la propietaria puede gestionar el equipo");
+    }
+    if (currentUser._id === userId) {
+      throw new Error("No puedes eliminar tu propio usuario");
+    }
+
+    const target = await ctx.db.get(userId);
+    if (!target) throw new Error("Usuario no encontrado");
+
+    if (target.rol === "propietaria") {
+      await assertKeepsActivePropietaria(ctx, userId);
+    }
+
+    await ctx.db.patch(userId, { activo: false });
+    return null;
   },
 });
