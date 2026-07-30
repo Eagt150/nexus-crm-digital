@@ -37,6 +37,11 @@ export default defineSchema({
     // filas huérfanas (varias queries ya descartan en silencio lo que no
     // resuelve).
     activo: v.optional(v.boolean()),
+    // Estampado en el primer login exitoso y en cada uno después (Google o
+    // contraseña) — distingue "invitad@ pero nunca entró" ("Pendiente de
+    // entrar" en /equipo) de alguien que ya usó el CRM alguna vez. Ausente
+    // = nunca inició sesión.
+    lastLoginAt: v.optional(v.number()),
   }).index("by_email", ["email"]),
 
   contacts: defineTable({

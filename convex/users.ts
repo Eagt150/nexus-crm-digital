@@ -52,10 +52,29 @@ export const isProvisionedInternal = internalQuery({
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", normalizeEmail(email)))
       .unique();
-    // activo === false (MCP-72, usuario eliminado desde /equipo) se trata
+    // activo === false (MCP-72, usuario sin acceso desde /equipo) se trata
     // igual que "no existe" — registro cerrado, así que tampoco puede
     // volver a entrar por Google.
     return user !== null && user.activo !== false;
+  },
+});
+
+// Estampa `lastLoginAt` en un login por Google exitoso — llamada desde
+// `checkProvisioned` justo después de confirmar que el usuario existe y
+// está activo (MCP-72: distingue "nunca inició sesión" de "ya usó el CRM").
+// No-op silencioso si el usuario ya no existe o dejó de estar activo entre
+// medio (no debería pasar en el mismo request, pero por si acaso).
+export const recordGoogleLoginInternal = internalMutation({
+  args: { email: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { email }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizeEmail(email)))
+      .unique();
+    if (!user || user.activo === false) return null;
+    await ctx.db.patch(user._id, { lastLoginAt: Date.now() });
+    return null;
   },
 });
 
@@ -70,7 +89,9 @@ export const checkProvisioned = action({
   returns: v.boolean(),
   handler: async (ctx, { email, secret }): Promise<boolean> => {
     if (secret !== process.env.PROVISION_CHECK_SECRET) return false;
-    return await ctx.runQuery(internal.users.isProvisionedInternal, { email });
+    const ok = await ctx.runQuery(internal.users.isProvisionedInternal, { email });
+    if (ok) await ctx.runMutation(internal.users.recordGoogleLoginInternal, { email });
+    return ok;
   },
 });
 
@@ -149,7 +170,11 @@ export const recordLoginOutcome = internalMutation({
     if (!user) return null;
 
     if (success) {
-      await ctx.db.patch(userId, { failedLoginAttempts: 0, lockedUntil: undefined });
+      await ctx.db.patch(userId, {
+        failedLoginAttempts: 0,
+        lockedUntil: undefined,
+        lastLoginAt: Date.now(),
+      });
       return null;
     }
 
@@ -231,21 +256,37 @@ export const listTeamMembers = query({
   },
 });
 
+const TEAM_USER_FIELDS = v.object({
+  id: v.id("users"),
+  nombre: v.string(),
+  email: v.string(),
+  rol: v.union(v.literal("propietaria"), v.literal("comercial")),
+  activo: v.boolean(),
+  // Ausente = nunca inició sesión ("Pendiente de entrar" en /equipo).
+  lastLoginAt: v.optional(v.number()),
+});
+
 // Lista de usuarios para la pantalla de Equipo. Restringida a `propietaria`
 // en el servidor (no solo en la UI) siguiendo el mismo contrato de
-// autorización que el resto de queries de este archivo. Filtra a activos:
-// un usuario "eliminado" (MCP-72) desaparece de esta pantalla.
+// autorización que el resto de queries de este archivo. Incluye a TODOS
+// los usuarios (activos e inactivos) — MCP-72: alguien sin acceso se sigue
+// mostrando, con badge "Sin acceso", en vez de desaparecer de la lista.
 export const listAll = query({
   args: {},
-  returns: v.array(SAFE_USER_FIELDS),
+  returns: v.array(TEAM_USER_FIELDS),
   handler: async (ctx) => {
     const currentUser = await requireCurrentUser(ctx);
     if (currentUser.rol !== "propietaria") return [];
 
     const users = await ctx.db.query("users").collect();
-    return users
-      .filter((u) => u.activo !== false)
-      .map((u) => ({ id: u._id, nombre: u.nombre, email: u.email, rol: u.rol }));
+    return users.map((u) => ({
+      id: u._id,
+      nombre: u.nombre,
+      email: u.email,
+      rol: u.rol,
+      activo: u.activo !== false,
+      lastLoginAt: u.lastLoginAt,
+    }));
   },
 });
 
@@ -341,29 +382,34 @@ export const updateUser = mutation({
   },
 });
 
-// "Eliminar" desde /equipo: soft-delete (`activo: false`), no borra la
-// fila — ver el comentario del campo en convex/schema.ts. Bloquea login
-// (Google y contraseña) y sesiones ya abiertas de inmediato.
-export const removeUser = mutation({
-  args: { userId: v.id("users") },
+// Quitar/devolver acceso desde /equipo (MCP-72). Quitar acceso es
+// soft-delete (`activo: false`), no borra la fila — ver el comentario del
+// campo en convex/schema.ts — y bloquea login (Google y contraseña) y
+// sesiones ya abiertas de inmediato. Devolver acceso (`activo: true`) no
+// tiene restricciones (nunca puede romper la regla de "al menos una
+// propietaria activa", solo ayuda a cumplirla).
+export const setUserActive = mutation({
+  args: { userId: v.id("users"), activo: v.boolean() },
   returns: v.null(),
-  handler: async (ctx, { userId }) => {
+  handler: async (ctx, { userId, activo }) => {
     const currentUser = await requireCurrentUser(ctx);
     if (currentUser.rol !== "propietaria") {
       throw new Error("Solo la propietaria puede gestionar el equipo");
-    }
-    if (currentUser._id === userId) {
-      throw new Error("No puedes eliminar tu propio usuario");
     }
 
     const target = await ctx.db.get(userId);
     if (!target) throw new Error("Usuario no encontrado");
 
-    if (target.rol === "propietaria") {
-      await assertKeepsActivePropietaria(ctx, userId);
+    if (!activo) {
+      if (currentUser._id === userId) {
+        throw new Error("No puedes quitarte el acceso a ti mismo");
+      }
+      if (target.rol === "propietaria") {
+        await assertKeepsActivePropietaria(ctx, userId);
+      }
     }
 
-    await ctx.db.patch(userId, { activo: false });
+    await ctx.db.patch(userId, { activo });
     return null;
   },
 });
