@@ -28,6 +28,15 @@ export default defineSchema({
     // poder invalidar sesiones/tokens de Convex emitidos antes del cambio
     // de contraseña — ver convex/mockSession.ts.
     passwordChangedAt: v.optional(v.number()),
+    // Gestión de usuarios (MCP-72). Ausente = activo (mismo idioma que
+    // `passwordHash` ausente = "solo Google"). "Eliminar" un usuario desde
+    // /equipo en realidad pone esto en `false` (soft-delete): bloquea login
+    // (Google y contraseña) y sesiones ya abiertas de inmediato, sin borrar
+    // la fila — `seguimientos.responsable`/`ventas.autor`/`interacciones.autor`
+    // la referencian de forma obligatoria, y un borrado real dejaría esas
+    // filas huérfanas (varias queries ya descartan en silencio lo que no
+    // resuelve).
+    activo: v.optional(v.boolean()),
   }).index("by_email", ["email"]),
 
   contacts: defineTable({
