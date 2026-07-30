@@ -25,6 +25,11 @@ export async function getCurrentUserOrNull(ctx: QueryCtx | MutationCtx) {
     .unique();
   if (!user) return null;
 
+  // Usuario eliminado desde /equipo (MCP-72) — se relee `ctx.db` en cada
+  // request, así que esto corta sesiones ya abiertas de inmediato, sin
+  // depender de que expire el JWT de Convex.
+  if (user.activo === false) return null;
+
   // Invalida sesiones/tokens de Convex emitidos antes del último reset de
   // contraseña (MCP-78) — `pwAt` es un claim propio que auth.ts embebe en
   // cada minteo (ver mintConvexToken), no un campo estándar de Convex.
