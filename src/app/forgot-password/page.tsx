@@ -11,7 +11,9 @@ import { Input } from "@/components/ui/Input";
 import { api } from "../../../convex/_generated/api";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const GENERIC_ERROR = "No se pudo completar. Inténtalo de nuevo.";
 type ResetMethod = "link" | "code";
+type Result = "sent" | "not-found" | "google-only" | "rate-limited";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -21,25 +23,29 @@ export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [result, setResult] = useState<"sent" | "not-found" | null>(null);
+  const [result, setResult] = useState<Result | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const emailValid = EMAIL_RE.test(email);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
     setTriedSubmit(true);
+    setSubmitError(null);
     if (!emailValid) return;
 
     setSubmitting(true);
     try {
       const trimmedEmail = email.trim();
-      const found = await requestReset({ email: trimmedEmail, method });
-      if (found && method === "code") {
+      const outcome = await requestReset({ email: trimmedEmail, method });
+      if (outcome === "sent" && method === "code") {
         setResetEmail(trimmedEmail);
         router.push("/reset-password?mode=code");
         return;
       }
-      setResult(found ? "sent" : "not-found");
+      setResult(outcome);
+    } catch {
+      setSubmitError(GENERIC_ERROR);
     } finally {
       setSubmitting(false);
     }
@@ -79,6 +85,35 @@ export default function ForgotPasswordPage() {
                 onClick={() => setResult(null)}
               >
                 Probar con otro email
+              </Button>
+            </>
+          ) : result === "google-only" ? (
+            <>
+              <h1 className="text-2xl font-semibold tracking-tight text-text">Cuenta con Google</h1>
+              <p className="mt-2 text-sm text-muted">
+                <strong>{email.trim()}</strong> entra con Google — no tiene contraseña que
+                restablecer.
+              </p>
+              <Link href="/login">
+                <Button type="button" variant="primary" className="mt-4 w-full">
+                  Ir al login con Google
+                </Button>
+              </Link>
+            </>
+          ) : result === "rate-limited" ? (
+            <>
+              <h1 className="text-2xl font-semibold tracking-tight text-text">Espera un momento</h1>
+              <p className="mt-2 text-sm text-muted">
+                Ya pediste un código/enlace hace muy poco. Espera unos segundos y vuelve a
+                intentarlo.
+              </p>
+              <Button
+                type="button"
+                variant="secondary"
+                className="mt-4 w-full"
+                onClick={() => setResult(null)}
+              >
+                Volver
               </Button>
             </>
           ) : (
@@ -125,6 +160,11 @@ export default function ForgotPasswordPage() {
               </p>
 
               <form className="mt-4 flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+                {submitError && (
+                  <p role="alert" className="text-sm text-error-text">
+                    {submitError}
+                  </p>
+                )}
                 <Input
                   label="Email"
                   type="email"

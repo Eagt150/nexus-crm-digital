@@ -9,10 +9,25 @@ export default defineSchema({
     nombre: v.string(),
     email: v.string(),
     rol: v.union(v.literal("propietaria"), v.literal("comercial")),
-    // DEMO ONLY — texto plano a propósito: no hay auth real todavía (ver
-    // convex/mockSession.ts). INTEGRATION POINT (MCP-28): eliminar este
-    // campo cuando el proveedor de auth real gestione credenciales.
+    // DEPRECATED (MCP-78) — texto plano. Ningún código nuevo lee/escribe
+    // este campo (usar `passwordHash`); se queda en el schema a propósito
+    // hasta confirmar que hashPasswordsMigration corrió también en PROD —
+    // si se quitara antes, el primer deploy a prod fallaría (Convex valida
+    // el schema contra los documentos ya existentes, que ahí todavía tienen
+    // `password` hasta que la migración corra). Retirarlo del schema es un
+    // paso separado y pequeño, después de confirmar la migración en prod.
     password: v.optional(v.string()),
+    // bcrypt. Ausente = cuenta solo-Google (nunca tuvo login por contraseña).
+    passwordHash: v.optional(v.string()),
+    // Rate limiting de `login` (convex/authActions.ts) — MCP-78.
+    failedLoginAttempts: v.optional(v.number()),
+    lockedUntil: v.optional(v.number()),
+    // Cooldown de `requestReset` (convex/passwordReset.ts) — MCP-78.
+    lastResetRequestAt: v.optional(v.number()),
+    // Estampado en cada reset real (nunca en la migración inicial) para
+    // poder invalidar sesiones/tokens de Convex emitidos antes del cambio
+    // de contraseña — ver convex/mockSession.ts.
+    passwordChangedAt: v.optional(v.number()),
   }).index("by_email", ["email"]),
 
   contacts: defineTable({

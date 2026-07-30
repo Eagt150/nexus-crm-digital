@@ -1,6 +1,6 @@
 "use client";
 
-import { useAction, useMutation } from "convex/react";
+import { useAction } from "convex/react";
 import { Eye, EyeOff, Info } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -13,6 +13,7 @@ import { api } from "../../../convex/_generated/api";
 
 type Outcome = "ok" | "invalid" | "expired";
 const RESEND_SECONDS = 45;
+const GENERIC_ERROR = "No se pudo completar. Inténtalo de nuevo.";
 
 function GoogleHint() {
   return (
@@ -91,12 +92,13 @@ function OutcomeMessage({ outcome, router }: { outcome: Outcome; router: ReturnT
 
 function TokenForm({ token }: { token: string }) {
   const router = useRouter();
-  const confirmReset = useMutation(api.passwordReset.confirmReset);
+  const confirmReset = useAction(api.passwordResetActions.confirmReset);
 
   const [password, setPassword] = useState("");
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   const passwordValid = password.length >= 8;
 
@@ -106,8 +108,11 @@ function TokenForm({ token }: { token: string }) {
     if (!passwordValid) return;
 
     setSubmitting(true);
+    setSubmitError(null);
     try {
       setOutcome(await confirmReset({ token, newPassword: password }));
+    } catch {
+      setSubmitError(GENERIC_ERROR);
     } finally {
       setSubmitting(false);
     }
@@ -117,6 +122,11 @@ function TokenForm({ token }: { token: string }) {
 
   return (
     <form className="flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+      {submitError && (
+        <p role="alert" className="text-sm text-error-text">
+          {submitError}
+        </p>
+      )}
       <PasswordField
         value={password}
         onChange={setPassword}
@@ -133,7 +143,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function CodeForm() {
   const router = useRouter();
-  const confirmResetWithCode = useMutation(api.passwordReset.confirmResetWithCode);
+  const confirmResetWithCode = useAction(api.passwordResetActions.confirmResetWithCode);
   const requestReset = useAction(api.passwordReset.requestReset);
 
   const storedEmail = useResetEmail();
@@ -146,8 +156,10 @@ function CodeForm() {
   const [triedSubmit, setTriedSubmit] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(RESEND_SECONDS);
   const [resending, setResending] = useState(false);
+  const [resendNote, setResendNote] = useState<string | null>(null);
 
   useEffect(() => {
     if (secondsLeft <= 0) return;
@@ -165,10 +177,13 @@ function CodeForm() {
     if (!emailValid || !codeValid || !passwordValid) return;
 
     setSubmitting(true);
+    setSubmitError(null);
     try {
       setOutcome(
         await confirmResetWithCode({ email: email.trim(), code, newPassword: password })
       );
+    } catch {
+      setSubmitError(GENERIC_ERROR);
     } finally {
       setSubmitting(false);
     }
@@ -177,9 +192,18 @@ function CodeForm() {
   async function handleResend() {
     if (!emailValid || secondsLeft > 0) return;
     setResending(true);
+    setResendNote(null);
     try {
-      await requestReset({ email: email.trim(), method: "code" });
-      setSecondsLeft(RESEND_SECONDS);
+      const result = await requestReset({ email: email.trim(), method: "code" });
+      if (result === "sent") {
+        setSecondsLeft(RESEND_SECONDS);
+      } else if (result === "rate-limited") {
+        setResendNote("Espera unos segundos más antes de pedir otro.");
+      } else {
+        setResendNote(GENERIC_ERROR);
+      }
+    } catch {
+      setResendNote(GENERIC_ERROR);
     } finally {
       setResending(false);
     }
@@ -205,6 +229,11 @@ function CodeForm() {
       <GoogleHint />
 
       <form className="mt-4 flex flex-col gap-4" onSubmit={handleSubmit} noValidate>
+        {submitError && (
+          <p role="alert" className="text-sm text-error-text">
+            {submitError}
+          </p>
+        )}
         {!emailLocked && (
           <Input
             label="Email"
@@ -250,6 +279,7 @@ function CodeForm() {
             Reenviar código
           </button>
         )}
+        {resendNote && <p className="mt-1 text-error-text">{resendNote}</p>}
       </div>
     </>
   );
@@ -313,15 +343,6 @@ export default function ResetPasswordPage() {
           <Suspense fallback={null}>
             <ResetPasswordBody />
           </Suspense>
-
-          <div className="mt-4 text-center">
-            <Link
-              href="/login"
-              className="text-sm text-muted underline underline-offset-2 hover:text-text"
-            >
-              Volver a iniciar sesión
-            </Link>
-          </div>
         </div>
       </div>
     </div>

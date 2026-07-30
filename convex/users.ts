@@ -1,7 +1,10 @@
 import { v } from "convex/values";
-import { action, internalQuery, mutation, query } from "./_generated/server";
+import { action, internalMutation, internalQuery, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { getCurrentUserOrNull, normalizeEmail, requireCurrentUser } from "./mockSession";
+
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOGIN_LOCKOUT_MS = 15 * 60 * 1000; // 15 min
 
 const SAFE_USER_FIELDS = v.object({
   id: v.id("users"),
@@ -59,21 +62,140 @@ export const checkProvisioned = action({
   },
 });
 
-// DEMO ONLY — compara la contraseña en texto plano (ver el campo `password`
-// en el schema). No emite ningún token de sesión: el frontend guarda el
-// usuario devuelto en localStorage y confía en él sin más verificación.
-// INTEGRATION POINT (MCP-28): sustituir por el `signIn` real del proveedor
-// de auth (hash de contraseña, tokens, cookies de sesión, etc.).
-export const login = mutation({
-  args: { email: v.string(), password: v.string() },
-  returns: v.union(SAFE_USER_FIELDS, v.null()),
-  handler: async (ctx, { email, password }) => {
+export const getPasswordChangedAtInternal = internalQuery({
+  args: { email: v.string() },
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx, { email }) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_email", (q) => q.eq("email", normalizeEmail(email)))
+      .unique();
+    return user?.passwordChangedAt ?? null;
+  },
+});
+
+// Igual patrón que `checkProvisioned`: gateada por el secreto compartido
+// para que no sirva como query pública arbitraria por email. `auth.ts` la
+// llama al mintear el token de Convex, para embeber `passwordChangedAt`
+// como claim (`pwAt`) y poder invalidar tokens emitidos antes de un reset
+// — ver convex/mockSession.ts.
+export const getPasswordChangedAt = action({
+  args: { email: v.string(), secret: v.string() },
+  returns: v.union(v.number(), v.null()),
+  handler: async (ctx, { email, secret }): Promise<number | null> => {
+    if (secret !== process.env.PROVISION_CHECK_SECRET) return null;
+    return await ctx.runQuery(internal.users.getPasswordChangedAtInternal, { email });
+  },
+});
+
+// Login por contraseña real (bcrypt) — MCP-78. La comparación en sí vive en
+// convex/authActions.ts (necesita el runtime Node de Convex para bcrypt, que
+// no puede convivir con query/mutation en el mismo archivo). Esta query solo
+// lee lo necesario; no expone `passwordHash` fuera de este módulo — el
+// caller (authActions.ts, mismo backend) sí necesita verlo para comparar.
+export const getUserForLogin = internalQuery({
+  args: { email: v.string() },
+  returns: v.union(
+    v.object({
+      id: v.id("users"),
+      nombre: v.string(),
+      email: v.string(),
+      rol: v.union(v.literal("propietaria"), v.literal("comercial")),
+      passwordHash: v.optional(v.string()),
+      lockedUntil: v.optional(v.number()),
+    }),
+    v.null()
+  ),
+  handler: async (ctx, { email }) => {
     const user = await ctx.db
       .query("users")
       .withIndex("by_email", (q) => q.eq("email", email))
       .unique();
-    if (!user || !user.password || user.password !== password) return null;
-    return { id: user._id, nombre: user.nombre, email: user.email, rol: user.rol };
+    if (!user) return null;
+    return {
+      id: user._id,
+      nombre: user.nombre,
+      email: user.email,
+      rol: user.rol,
+      passwordHash: user.passwordHash,
+      lockedUntil: user.lockedUntil,
+    };
+  },
+});
+
+// Única fuente de verdad para el contador de intentos fallidos: relee
+// `failedLoginAttempts` en vivo dentro de sí misma (no confía en un valor
+// que la action haya calculado antes del bcrypt.compare, que tarda) — así
+// dos intentos concurrentes no pueden pisarse el incremento uno al otro.
+export const recordLoginOutcome = internalMutation({
+  args: { userId: v.id("users"), success: v.boolean() },
+  returns: v.null(),
+  handler: async (ctx, { userId, success }) => {
+    const user = await ctx.db.get(userId);
+    if (!user) return null;
+
+    if (success) {
+      await ctx.db.patch(userId, { failedLoginAttempts: 0, lockedUntil: undefined });
+      return null;
+    }
+
+    const attempts = (user.failedLoginAttempts ?? 0) + 1;
+    if (attempts >= MAX_LOGIN_ATTEMPTS) {
+      await ctx.db.patch(userId, {
+        failedLoginAttempts: attempts,
+        lockedUntil: Date.now() + LOGIN_LOCKOUT_MS,
+      });
+    } else {
+      await ctx.db.patch(userId, { failedLoginAttempts: attempts });
+    }
+    return null;
+  },
+});
+
+// Soporte de convex/hashPasswordsMigration.ts (MCP-78) — la action Node no
+// tiene `ctx.db`, así que orquesta llamando a esta query (para leer) y a
+// `applyPasswordHash` (para escribir). Solo devuelve lo estrictamente
+// necesario para hashear (id + password en texto plano).
+export const listUsersWithPlaintextPassword = internalQuery({
+  args: {},
+  returns: v.array(v.object({ id: v.id("users"), password: v.string() })),
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    return users
+      .filter((u) => u.password !== undefined)
+      .map((u) => ({ id: u._id, password: u.password! }));
+  },
+});
+
+// Escribe el hash calculado por la migración. Relee el documento completo
+// vía `ctx.db.get` y hace `replace` (no `patch`) a partir de ESE documento
+// completo — nunca reconstruye el documento desde datos parciales que le
+// pase la action, para no perder ningún campo existente (nombre, rol, etc.)
+// ni dejar `password` a medio borrar. Idempotente: si el usuario ya no tiene
+// `password` (ya migrado), no hace nada — en la práctica no debería
+// llamarse dos veces para el mismo usuario porque `listUsersWithPlaintextPassword`
+// ya no lo devolvería.
+export const applyPasswordHash = internalMutation({
+  args: { userId: v.id("users"), passwordHash: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { userId, passwordHash }) => {
+    const user = await ctx.db.get(userId);
+    if (!user || user.password === undefined) return null;
+
+    // Construido campo a campo (no destructuring del documento vivo) para
+    // que quede explícito qué se preserva — `replace` sustituye el
+    // documento entero, así que omitir algo aquí lo borraría de verdad.
+    await ctx.db.replace(userId, {
+      nombre: user.nombre,
+      email: user.email,
+      rol: user.rol,
+      passwordHash,
+      failedLoginAttempts: user.failedLoginAttempts,
+      lockedUntil: user.lockedUntil,
+      lastResetRequestAt: user.lastResetRequestAt,
+      passwordChangedAt: user.passwordChangedAt,
+    });
+    return null;
   },
 });
 
