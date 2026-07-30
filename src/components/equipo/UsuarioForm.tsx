@@ -22,6 +22,11 @@ export interface UsuarioEditData {
   nombre: string;
   email: string;
   rol: RolUsuario;
+  // Presentes cuando este dato viene de `listAll` (MCP-72) — el propio
+  // formulario no los usa, pero equipo/page.tsx los necesita para decidir
+  // qué badges/acciones mostrar en la fila (ver EquipoPage).
+  activo?: boolean;
+  lastLoginAt?: number;
 }
 
 type UsuarioFormProps = {
