@@ -22,6 +22,20 @@ const SAFE_USER_FIELDS = v.object({
   rol: v.union(v.literal("propietaria"), v.literal("comercial")),
 });
 
+// Igual que SAFE_USER_FIELDS más `tienePassword` — solo `getCurrentUser` lo
+// expone (MCP-73, /cuenta): el propio dueño de la fila necesita saber si
+// tiene contraseña propia para mostrar/ocultar "Cambiar contraseña" y
+// bloquear la edición de su email en cuentas solo-Google. No se añade a
+// SAFE_USER_FIELDS en general porque ningún otro caller (equipo, etc.)
+// necesita ni debe ver esto de otros usuarios.
+const CURRENT_USER_FIELDS = v.object({
+  id: v.id("users"),
+  nombre: v.string(),
+  email: v.string(),
+  rol: v.union(v.literal("propietaria"), v.literal("comercial")),
+  tienePassword: v.boolean(),
+});
+
 // Sin argumentos a propósito: expone únicamente el usuario autenticado real
 // (identidad verificada por Convex vía ctx.auth, ver convex/mockSession.ts
 // y convex/auth.config.ts), nunca un email arbitrario que mande el cliente —
@@ -31,11 +45,17 @@ const SAFE_USER_FIELDS = v.object({
 // capturado.
 export const getCurrentUser = query({
   args: {},
-  returns: v.union(SAFE_USER_FIELDS, v.null()),
+  returns: v.union(CURRENT_USER_FIELDS, v.null()),
   handler: async (ctx) => {
     const user = await getCurrentUserOrNull(ctx);
     if (!user) return null;
-    return { id: user._id, nombre: user.nombre, email: user.email, rol: user.rol };
+    return {
+      id: user._id,
+      nombre: user.nombre,
+      email: user.email,
+      rol: user.rol,
+      tienePassword: user.passwordHash !== undefined,
+    };
   },
 });
 
@@ -410,6 +430,69 @@ export const setUserActive = mutation({
     }
 
     await ctx.db.patch(userId, { activo });
+    return null;
+  },
+});
+
+// --- Mi cuenta (MCP-73) --------------------------------------------------
+
+// Autoservicio de "Editar mis datos" en /cuenta — a diferencia de
+// `updateUser` (arriba), no toca `rol` ni `activo`: cualquier usuario en
+// sesión puede llamar esto sobre sí mismo, así que exponer esos campos aquí
+// sería una vía de auto-ascenso de privilegios (un `comercial` podría
+// ponerse `propietaria`) o de auto-reactivación tras una baja. Cambiar de
+// rol sigue siendo exclusivo de /equipo (propietaria-only).
+export const updateMyProfile = mutation({
+  args: { nombre: v.string(), email: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { nombre, email }) => {
+    const currentUser = await requireCurrentUser(ctx);
+    const normalized = normalizeEmail(email);
+    const trimmedNombre = nombre.trim();
+
+    // El cliente (EditarDatosForm.tsx) ya exige un nombre no vacío, pero
+    // esta mutation es la última palabra: una llamada directa (saltándose
+    // la UI) no debe poder dejar el nombre en blanco. El formato del email
+    // ya lo valida `assertEmailAvailable` más abajo, no hace falta
+    // repetirlo aquí.
+    if (trimmedNombre.length === 0) {
+      throw new Error("Añade un nombre");
+    }
+
+    // Cuenta solo-Google (sin passwordHash): su email es el mismo que usa
+    // para entrar por Google, verificado en cada login vía
+    // `checkProvisioned`. Dejar que lo cambien aquí las desincronizaría de
+    // su identidad real de Google y, como el alta está cerrada (nadie puede
+    // re-aprovisionarse solo), las dejaría bloqueadas sin forma de volver a
+    // entrar. Bloqueado en el servidor, no solo en la UI.
+    if (currentUser.passwordHash === undefined && normalized !== currentUser.email) {
+      throw new Error("No puedes cambiar el email de una cuenta que entra con Google");
+    }
+
+    await assertEmailAvailable(ctx, normalized, currentUser._id);
+    await ctx.db.patch(currentUser._id, { nombre: trimmedNombre, email: normalized });
+    return null;
+  },
+});
+
+// Última escritura de "Cambiar contraseña" en /cuenta — llamada desde
+// convex/accountActions.ts#changeMyPassword tras verificar con bcrypt la
+// contraseña actual (esta mutation no repite esa verificación: confía en
+// que el caller, en el mismo backend, ya la hizo). Mismo patrón que
+// `finalizeByToken`/`finalizeByCode` en convex/passwordReset.ts: estampa
+// `passwordChangedAt` (invalida tokens de Convex ya emitidos, ver
+// convex/mockSession.ts) y limpia el contador de intentos fallidos — quien
+// llega hasta aquí ya demostró conocer la contraseña actual.
+export const setPasswordHashInternal = internalMutation({
+  args: { userId: v.id("users"), passwordHash: v.string() },
+  returns: v.null(),
+  handler: async (ctx, { userId, passwordHash }) => {
+    await ctx.db.patch(userId, {
+      passwordHash,
+      passwordChangedAt: Date.now(),
+      failedLoginAttempts: 0,
+      lockedUntil: undefined,
+    });
     return null;
   },
 });
