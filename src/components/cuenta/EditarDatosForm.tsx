@@ -64,7 +64,15 @@ export function EditarDatosForm({
         try {
           await signOut({ callbackUrl: "/login" });
         } catch {
-          // Nada que mostrar — el guardado ya tuvo éxito.
+          // El email ya cambió en el servidor: en cuanto eso pasa, la query
+          // reactiva de useCurrentUser() (ver CuentaPage) deja de encontrar
+          // la fila por el email viejo del JWT y cae a null — la página
+          // padre hace `if (!currentUser) return null` y este formulario
+          // (con cualquier mensaje que intentemos pintar aquí) desaparece
+          // del árbol casi de inmediato. Mostrar un error in-page es
+          // inútil por diseño; una navegación dura es la única red de
+          // seguridad real si signOut() no completa por su cuenta.
+          window.location.href = "/login";
         }
         return;
       }
