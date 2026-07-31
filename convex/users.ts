@@ -448,6 +448,16 @@ export const updateMyProfile = mutation({
   handler: async (ctx, { nombre, email }) => {
     const currentUser = await requireCurrentUser(ctx);
     const normalized = normalizeEmail(email);
+    const trimmedNombre = nombre.trim();
+
+    // El cliente (EditarDatosForm.tsx) ya exige un nombre no vacío, pero
+    // esta mutation es la última palabra: una llamada directa (saltándose
+    // la UI) no debe poder dejar el nombre en blanco. El formato del email
+    // ya lo valida `assertEmailAvailable` más abajo, no hace falta
+    // repetirlo aquí.
+    if (trimmedNombre.length === 0) {
+      throw new Error("Añade un nombre");
+    }
 
     // Cuenta solo-Google (sin passwordHash): su email es el mismo que usa
     // para entrar por Google, verificado en cada login vía
@@ -460,7 +470,7 @@ export const updateMyProfile = mutation({
     }
 
     await assertEmailAvailable(ctx, normalized, currentUser._id);
-    await ctx.db.patch(currentUser._id, { nombre, email: normalized });
+    await ctx.db.patch(currentUser._id, { nombre: trimmedNombre, email: normalized });
     return null;
   },
 });

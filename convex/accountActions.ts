@@ -47,8 +47,18 @@ export const changeMyPassword = action({
 
     if (!user.passwordHash) return "google-only";
 
+    // Mismo lockout que el login normal (convex/authActions.ts) — sin esto,
+    // una sesión ya autenticada podría usar este endpoint para adivinar la
+    // contraseña actual sin el límite de intentos que sí protege /login.
+    if (user.lockedUntil !== undefined && user.lockedUntil > Date.now()) {
+      return "invalid-current";
+    }
+
     const valid = await bcrypt.compare(currentPassword, user.passwordHash);
-    if (!valid) return "invalid-current";
+    if (!valid) {
+      await ctx.runMutation(internal.users.recordLoginOutcome, { userId: user.id, success: false });
+      return "invalid-current";
+    }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);
     await ctx.runMutation(internal.users.setPasswordHashInternal, {

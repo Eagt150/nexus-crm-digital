@@ -58,8 +58,14 @@ export function EditarDatosForm({
         // ya no encontrará esta fila por ese email (ver
         // mockSession.ts#getCurrentUserOrNull), así que en vez de dejar al
         // usuario en una sesión a medio romper, se cierra de una vez y
-        // vuelve a entrar con el email nuevo.
-        await signOut({ callbackUrl: "/login" });
+        // vuelve a entrar con el email nuevo. Aislado en su propio
+        // try/catch: el perfil ya se guardó, así que un fallo aquí no debe
+        // reportarse como un fallo de guardado.
+        try {
+          await signOut({ callbackUrl: "/login" });
+        } catch {
+          // Nada que mostrar — el guardado ya tuvo éxito.
+        }
         return;
       }
       onSaved();
