@@ -1,0 +1,5 @@
+# https://docs.coderabbit.ai/reference/yaml-template
+reviews:
+  # "quiet" only surfaces high-severity feedback (bugs, security issues, logic
+  # errors, runtime failures) and stays silent on style/nitpick-level comments.
+  profile: quiet
