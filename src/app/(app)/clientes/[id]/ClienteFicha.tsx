@@ -21,7 +21,7 @@ import { Skeleton } from "@/components/ui/Skeleton";
 import { ClienteForm } from "@/components/clientes/ClienteForm";
 import { InteraccionForm } from "@/components/interacciones/InteraccionForm";
 import { SeguimientoForm } from "@/components/seguimientos/SeguimientoForm";
-import { VentaForm } from "@/components/ventas/VentaForm";
+import { VentaForm, type VentaEditData } from "@/components/ventas/VentaForm";
 import { useToast } from "@/components/toast/ToastProvider";
 import { daysOverdue, overdueLabel, todayISO } from "@/lib/date";
 import { estadoToBadgeTone, parseEstadoCliente, ventaEstadoLabel, ventaEstadoToBadgeTone } from "@/lib/estado";
@@ -36,7 +36,7 @@ const CANAL_ORIGEN_LABEL: Record<string, string> = {
   whatsapp: "WhatsApp",
 };
 
-type ActiveOverlay = "editar" | "interaccion" | "seguimiento" | "venta" | null;
+type ActiveOverlay = "editar" | "interaccion" | "seguimiento" | "venta" | "editarVenta" | null;
 
 type HistorialItem =
   | { kind: "interaccion"; fecha: string; id: string; tipo: string; texto: string; autorNombre: string }
@@ -48,6 +48,7 @@ type HistorialItem =
       importe: number;
       estado: "oportunidad" | "ganada" | "perdida";
       autorNombre: string;
+      canEdit: boolean;
     }
   | { kind: "seguimiento_completado"; fecha: string; id: string; responsableNombre: string };
 
@@ -56,6 +57,7 @@ export function ClienteFicha({ id }: { id: string }) {
   const { showToast } = useToast();
   const [localTodayISO] = useState(() => todayISO());
   const [activeOverlay, setActiveOverlay] = useState<ActiveOverlay>(null);
+  const [selectedVenta, setSelectedVenta] = useState<VentaEditData | null>(null);
 
   const cliente = useQuery(api.contacts.getById, { id: clienteId });
   const interacciones = useQuery(
@@ -118,6 +120,7 @@ export function ClienteFicha({ id }: { id: string }) {
         importe: v.importe,
         estado: v.estado,
         autorNombre: v.autor.nombre,
+        canEdit: v.canEdit,
       })),
       ...seguimientos
         .filter((s) => s.hecho)
@@ -345,6 +348,29 @@ export function ClienteFicha({ id }: { id: string }) {
                     <span className="shrink-0 font-mono text-sm text-success-text">
                       {item.importe.toLocaleString("es-ES", { style: "currency", currency: "EUR" })}
                     </span>
+                    <button
+                      type="button"
+                      disabled={!item.canEdit}
+                      aria-label={
+                        item.canEdit
+                          ? `Editar venta "${item.concepto}"`
+                          : `Solo ${item.autorNombre} o la propietaria pueden editar "${item.concepto}"`
+                      }
+                      title={item.canEdit ? undefined : `Registrado por ${item.autorNombre}`}
+                      onClick={() => {
+                        setSelectedVenta({
+                          id: item.id as Id<"ventas">,
+                          concepto: item.concepto,
+                          importe: item.importe,
+                          estado: item.estado,
+                          fecha: item.fecha,
+                        });
+                        setActiveOverlay("editarVenta");
+                      }}
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors duration-fast ease-standard hover:bg-surface-2 hover:text-text focus-visible:outline-none focus-visible:[box-shadow:var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
+                    >
+                      <Pencil className="size-4" aria-hidden />
+                    </button>
                   </>
                 )}
                 {item.kind === "seguimiento_completado" && (
@@ -412,6 +438,7 @@ export function ClienteFicha({ id }: { id: string }) {
 
       <Overlay open={activeOverlay === "venta"} onClose={() => setActiveOverlay(null)} title="Registrar venta">
         <VentaForm
+          mode="create"
           clienteId={clienteId}
           onSaved={() => {
             setActiveOverlay(null);
@@ -419,6 +446,24 @@ export function ClienteFicha({ id }: { id: string }) {
           }}
           onCancel={() => setActiveOverlay(null)}
         />
+      </Overlay>
+
+      <Overlay
+        open={activeOverlay === "editarVenta"}
+        onClose={() => setActiveOverlay(null)}
+        title="Editar venta"
+      >
+        {selectedVenta && (
+          <VentaForm
+            mode="edit"
+            venta={selectedVenta}
+            onSaved={() => {
+              setActiveOverlay(null);
+              showToast("Venta actualizada");
+            }}
+            onCancel={() => setActiveOverlay(null)}
+          />
+        )}
       </Overlay>
     </div>
   );

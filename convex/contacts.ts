@@ -35,28 +35,30 @@ function assertContactoValido(nombre: string, telefono?: string, email?: string)
 
 // `propietaria` ve todos los contactos; `comercial` solo los que tienen al
 // menos un seguimiento a su nombre, o que él mismo dio de alta (mismo
-// contrato que contacts.getById).
+// contrato que contacts.getById). Para `comercial` se resuelve con índices
+// (nunca se recorre la tabla `contacts` ni `seguimientos` entera) y luego se
+// traen por id solo las fichas concretas que le tocan.
 async function visibleContacts(ctx: QueryCtx, currentUser: Doc<"users">) {
-  const contacts = await ctx.db.query("contacts").collect();
-  if (currentUser.rol === "propietaria") return contacts;
+  if (currentUser.rol === "propietaria") return await ctx.db.query("contacts").collect();
 
-  const ownSeguimientos = await ctx.db
-    .query("seguimientos")
-    .filter((q) => q.eq(q.field("responsable"), currentUser._id))
-    .collect();
-  const ownClienteIds = new Set(ownSeguimientos.map((s) => s.clienteId));
-  return contacts.filter((c) => ownClienteIds.has(c._id) || c.creadoPor === currentUser._id);
-}
+  const [ownSeguimientos, ownCreated] = await Promise.all([
+    ctx.db
+      .query("seguimientos")
+      .withIndex("by_responsable", (q) => q.eq("responsable", currentUser._id))
+      .collect(),
+    ctx.db
+      .query("contacts")
+      .withIndex("by_creadoPor", (q) => q.eq("creadoPor", currentUser._id))
+      .collect(),
+  ]);
 
-// Fecha (ISO) de la interacción más reciente de un cliente, o null si no
-// tiene ninguna registrada todavía.
-async function lastInteractionISO(ctx: QueryCtx, clienteId: Doc<"contacts">["_id"]) {
-  const interacciones = await ctx.db
-    .query("interacciones")
-    .withIndex("by_cliente", (q) => q.eq("clienteId", clienteId))
-    .collect();
-  if (interacciones.length === 0) return null;
-  return interacciones.reduce((latest, i) => (i.fecha > latest ? i.fecha : latest), interacciones[0].fecha);
+  const visibleIds = new Set(ownSeguimientos.map((s) => s.clienteId));
+  for (const c of ownCreated) visibleIds.add(c._id);
+
+  const missingIds = [...visibleIds].filter((id) => !ownCreated.some((c) => c._id === id));
+  const fetched = await Promise.all(missingIds.map((id) => ctx.db.get(id)));
+
+  return [...ownCreated, ...fetched.filter((c): c is Doc<"contacts"> => c !== null)];
 }
 
 // Chequeo de visibilidad compartido por getById/loadAuthorizedContact y por
@@ -213,17 +215,15 @@ export const list = query({
     const currentUser = await requireCurrentUser(ctx);
     const contacts = await visibleContacts(ctx, currentUser);
 
-    const withLastContact = await Promise.all(
-      contacts.map(async (c) => ({
-        id: c._id,
-        nombre: c.nombre,
-        empresa: c.empresa,
-        telefono: c.telefono,
-        email: c.email,
-        estado: c.estado,
-        ultimoContacto: await lastInteractionISO(ctx, c._id),
-      }))
-    );
+    const withLastContact = contacts.map((c) => ({
+      id: c._id,
+      nombre: c.nombre,
+      empresa: c.empresa,
+      telefono: c.telefono,
+      email: c.email,
+      estado: c.estado,
+      ultimoContacto: c.ultimoContactoISO ?? null,
+    }));
 
     return withLastContact.sort((a, b) => a.nombre.localeCompare(b.nombre, "es"));
   },

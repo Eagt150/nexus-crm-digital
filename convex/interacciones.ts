@@ -66,19 +66,31 @@ export const create = mutation({
   },
   returns: v.id("interacciones"),
   handler: async (ctx, { clienteId, tipo, texto, fecha }) => {
-    await loadAuthorizedContact(ctx, clienteId);
+    const contact = await loadAuthorizedContact(ctx, clienteId);
 
     const texto_ = texto.trim();
     if (!texto_) throw new Error("La nota es obligatoria.");
     if (!isValidISODate(fecha)) throw new Error("Fecha no válida.");
 
     const currentUser = await requireCurrentUser(ctx);
-    return await ctx.db.insert("interacciones", {
+    const id = await ctx.db.insert("interacciones", {
       clienteId,
       tipo,
       texto: texto_,
       fecha,
       autor: currentUser._id,
     });
+
+    // Mantiene `contacts.ultimoContactoISO` al día (denormalizado, evita que
+    // contacts.list tenga que consultar `interacciones` por cada contacto).
+    // Comparación lexicográfica: válida porque `fecha` siempre es ISO
+    // YYYY-MM-DD (isValidISODate ya lo garantiza arriba). Solo avanza el
+    // valor, nunca lo retrocede, para que registrar una interacción con
+    // fecha pasada no "borre" un último contacto más reciente ya guardado.
+    if ((contact.ultimoContactoISO ?? "") < fecha) {
+      await ctx.db.patch(clienteId, { ultimoContactoISO: fecha });
+    }
+
+    return id;
   },
 });

@@ -27,12 +27,16 @@ export const list = query({
   ),
   handler: async (ctx) => {
     const currentUser = await requireCurrentUser(ctx);
-    const rows = await ctx.db.query("ventas").collect();
-    const visible =
-      currentUser.rol === "propietaria" ? rows : rows.filter((r) => r.autor === currentUser._id);
+    const rows =
+      currentUser.rol === "propietaria"
+        ? await ctx.db.query("ventas").collect()
+        : await ctx.db
+            .query("ventas")
+            .withIndex("by_autor", (q) => q.eq("autor", currentUser._id))
+            .collect();
 
     const resolved = await Promise.all(
-      visible.map(async (row) => {
+      rows.map(async (row) => {
         const [cliente, autor] = await Promise.all([
           ctx.db.get(row.clienteId),
           ctx.db.get(row.autor),
@@ -71,6 +75,7 @@ export const listByCliente = query({
       estado: ESTADO_VENTA,
       fecha: v.string(),
       autor: v.object({ id: v.id("users"), nombre: v.string() }),
+      canEdit: v.boolean(),
     })
   ),
   handler: async (ctx, { clienteId }) => {
@@ -96,6 +101,12 @@ export const listByCliente = query({
           estado: row.estado,
           fecha: row.fecha,
           autor: { id: autor._id, nombre: autor.nombre },
+          // Mismo contrato que `seguimientos.canMarkDone`: la ficha muestra
+          // las ventas de TODOS los autores, pero solo puede editarlas la
+          // propietaria o quien las registró. Sin este campo, la UI no
+          // puede saber de antemano que el botón de editar va a ser
+          // rechazado por el servidor.
+          canEdit: currentUser.rol === "propietaria" || row.autor === currentUser._id,
         };
       })
     );
@@ -130,5 +141,38 @@ export const create = mutation({
       fecha,
       autor: currentUser._id,
     });
+  },
+});
+
+// Corrige una venta ya guardada (importe/fecha mal introducidos, estado que
+// cambió, etc.). Mismo contrato de autorización que `list`: `propietaria`
+// puede corregir cualquier venta, `comercial` solo las que registró ella
+// misma. No distingue "no existe" de "no autorizada" en el mensaje, para no
+// filtrar por la respuesta si un id es válido o no (mismo criterio que
+// `contacts.loadAuthorizedContact`/`seguimientos.loadAuthorized`).
+export const update = mutation({
+  args: {
+    id: v.id("ventas"),
+    concepto: v.string(),
+    importe: v.number(),
+    estado: ESTADO_VENTA,
+    fecha: v.string(),
+  },
+  returns: v.null(),
+  handler: async (ctx, { id, concepto, importe, estado, fecha }) => {
+    const currentUser = await requireCurrentUser(ctx);
+    const venta = await ctx.db.get(id);
+    const authorized =
+      venta !== null &&
+      (currentUser.rol === "propietaria" || venta.autor === currentUser._id);
+    if (!authorized) throw new Error("No autorizado");
+
+    const concepto_ = concepto.trim();
+    if (!concepto_) throw new Error("El concepto es obligatorio.");
+    if (!(importe > 0)) throw new Error("El importe debe ser mayor que 0.");
+    if (!isValidISODate(fecha)) throw new Error("Fecha no válida.");
+
+    await ctx.db.patch(id, { concepto: concepto_, importe, estado, fecha });
+    return null;
   },
 });

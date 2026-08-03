@@ -28,7 +28,7 @@ export const seedDemoContacts = mutation({
         email: "laura@eltrigal.es",
         canalOrigen: "web" as const,
         nota: "Interesada en el plan mensual.",
-        estado: "activo",
+        estado: "activo" as const,
       },
       {
         nombre: "Carlos Ruiz",
@@ -37,7 +37,7 @@ export const seedDemoContacts = mutation({
         email: "carlos@ruizconsultoria.com",
         canalOrigen: "redes" as const,
         nota: "Pidió una demo la semana pasada.",
-        estado: "seguimiento",
+        estado: "seguimiento" as const,
       },
       {
         nombre: "Marta Gómez",
@@ -46,7 +46,7 @@ export const seedDemoContacts = mutation({
         email: "marta.gomez@gmail.com",
         canalOrigen: "whatsapp" as const,
         nota: "Cliente particular, primera compra.",
-        estado: "activo",
+        estado: "activo" as const,
       },
       {
         nombre: "Javier Torres",
@@ -55,7 +55,7 @@ export const seedDemoContacts = mutation({
         email: "javier@torresyasociados.es",
         canalOrigen: "email" as const,
         nota: "Sin respuesta tras el último contacto.",
-        estado: "inactivo",
+        estado: "inactivo" as const,
       },
       {
         nombre: "Elena Vidal",
@@ -64,7 +64,7 @@ export const seedDemoContacts = mutation({
         email: "elena@vidalstudio.com",
         canalOrigen: "web" as const,
         nota: "Cliente recurrente, muy satisfecha.",
-        estado: "activo",
+        estado: "activo" as const,
       },
     ];
 
