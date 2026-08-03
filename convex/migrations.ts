@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
+import { mutation, internalMutation } from "./_generated/server";
 
 // Migración puntual de un solo uso (MCP-76): cambia el email de un usuario
 // ya existente, dejando password/rol/_id intactos. Se borra este archivo
@@ -31,7 +31,9 @@ export const updateUserEmail = mutation({
 // al día solo). Idempotente: recalcula el valor desde cero en cada
 // ejecución en vez de acumular, así que se puede reintentar sin riesgo si
 // se corta a medias. Se borra este archivo una vez migrados dev y prod.
-export const backfillUltimoContacto = mutation({
+// `internalMutation` (no `mutation`): solo se invoca desde el CLI/dashboard
+// de Convex, nunca debe ser llamable desde el cliente.
+export const backfillUltimoContacto = internalMutation({
   args: {},
   returns: v.object({ contactosActualizados: v.number() }),
   handler: async (ctx) => {

@@ -48,6 +48,7 @@ type HistorialItem =
       importe: number;
       estado: "oportunidad" | "ganada" | "perdida";
       autorNombre: string;
+      canEdit: boolean;
     }
   | { kind: "seguimiento_completado"; fecha: string; id: string; responsableNombre: string };
 
@@ -119,6 +120,7 @@ export function ClienteFicha({ id }: { id: string }) {
         importe: v.importe,
         estado: v.estado,
         autorNombre: v.autor.nombre,
+        canEdit: v.canEdit,
       })),
       ...seguimientos
         .filter((s) => s.hecho)
@@ -348,7 +350,13 @@ export function ClienteFicha({ id }: { id: string }) {
                     </span>
                     <button
                       type="button"
-                      aria-label={`Editar venta "${item.concepto}"`}
+                      disabled={!item.canEdit}
+                      aria-label={
+                        item.canEdit
+                          ? `Editar venta "${item.concepto}"`
+                          : `Solo ${item.autorNombre} o la propietaria pueden editar "${item.concepto}"`
+                      }
+                      title={item.canEdit ? undefined : `Registrado por ${item.autorNombre}`}
                       onClick={() => {
                         setSelectedVenta({
                           id: item.id as Id<"ventas">,
@@ -359,7 +367,7 @@ export function ClienteFicha({ id }: { id: string }) {
                         });
                         setActiveOverlay("editarVenta");
                       }}
-                      className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors duration-fast ease-standard hover:bg-surface-2 hover:text-text focus-visible:outline-none focus-visible:[box-shadow:var(--focus-ring)]"
+                      className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors duration-fast ease-standard hover:bg-surface-2 hover:text-text focus-visible:outline-none focus-visible:[box-shadow:var(--focus-ring)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-transparent"
                     >
                       <Pencil className="size-4" aria-hidden />
                     </button>

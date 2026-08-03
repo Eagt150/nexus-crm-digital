@@ -75,6 +75,7 @@ export const listByCliente = query({
       estado: ESTADO_VENTA,
       fecha: v.string(),
       autor: v.object({ id: v.id("users"), nombre: v.string() }),
+      canEdit: v.boolean(),
     })
   ),
   handler: async (ctx, { clienteId }) => {
@@ -100,6 +101,12 @@ export const listByCliente = query({
           estado: row.estado,
           fecha: row.fecha,
           autor: { id: autor._id, nombre: autor.nombre },
+          // Mismo contrato que `seguimientos.canMarkDone`: la ficha muestra
+          // las ventas de TODOS los autores, pero solo puede editarlas la
+          // propietaria o quien las registró. Sin este campo, la UI no
+          // puede saber de antemano que el botón de editar va a ser
+          // rechazado por el servidor.
+          canEdit: currentUser.rol === "propietaria" || row.autor === currentUser._id,
         };
       })
     );
