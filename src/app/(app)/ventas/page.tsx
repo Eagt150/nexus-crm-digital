@@ -163,7 +163,7 @@ export default function VentasPage() {
           onPick={(id, nombre) => setVentaCliente({ id, nombre })}
           onChangeCliente={() => setVentaCliente(null)}
           renderForm={(clienteId) => (
-            <VentaForm clienteId={clienteId} onSaved={handleVentaSaved} onCancel={handleCloseVenta} />
+            <VentaForm mode="create" clienteId={clienteId} onSaved={handleVentaSaved} onCancel={handleCloseVenta} />
           )}
         />
       </Overlay>

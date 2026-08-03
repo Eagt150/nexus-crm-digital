@@ -53,12 +53,22 @@ export default defineSchema({
       v.union(v.literal("web"), v.literal("redes"), v.literal("email"), v.literal("whatsapp"))
     ),
     nota: v.optional(v.string()),
-    estado: v.optional(v.string()),
+    estado: v.optional(
+      v.union(v.literal("activo"), v.literal("seguimiento"), v.literal("inactivo"))
+    ),
     // Quién dio de alta el contacto. Permite que un `comercial` vea sus
     // propios clientes recién creados aunque todavía no tengan ningún
     // seguimiento asignado (ver visibleContacts en contacts.ts).
     creadoPor: v.optional(v.id("users")),
-  }).index("by_nombre", ["nombre"]),
+    // Fecha (ISO) de la interacción más reciente del cliente, denormalizada
+    // desde `interacciones` para que `contacts.list` no tenga que hacer una
+    // consulta aparte por cada contacto. Se actualiza en
+    // `interacciones.create`; ausente = todavía sin ninguna interacción
+    // registrada.
+    ultimoContactoISO: v.optional(v.string()),
+  })
+    .index("by_nombre", ["nombre"])
+    .index("by_creadoPor", ["creadoPor"]),
 
   seguimientos: defineTable({
     clienteId: v.id("contacts"),
@@ -70,7 +80,8 @@ export default defineSchema({
   })
     .index("by_cliente", ["clienteId"])
     .index("by_vence", ["vence"])
-    .index("by_hecho_vence", ["hecho", "vence"]),
+    .index("by_hecho_vence", ["hecho", "vence"])
+    .index("by_responsable", ["responsable"]),
 
   interacciones: defineTable({
     clienteId: v.id("contacts"),
@@ -92,7 +103,9 @@ export default defineSchema({
     estado: v.union(v.literal("oportunidad"), v.literal("ganada"), v.literal("perdida")),
     fecha: v.string(), // ISO date
     autor: v.id("users"),
-  }).index("by_cliente", ["clienteId"]),
+  })
+    .index("by_cliente", ["clienteId"])
+    .index("by_autor", ["autor"]),
 
   // Solo aplica al login por contraseña (Credentials) — MCP-77. `token` es
   // de un solo uso y de alta entropía (32 bytes aleatorios), así que no

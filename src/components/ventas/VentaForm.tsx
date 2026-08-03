@@ -17,29 +17,40 @@ const ESTADO_OPTIONS: { value: EstadoVenta; label: string }[] = [
   { value: "perdida", label: "Perdida" },
 ];
 
-interface VentaFormProps {
-  clienteId: Id<"contacts">;
-  onSaved: () => void;
-  onCancel: () => void;
+export interface VentaEditData {
+  id: Id<"ventas">;
+  concepto: string;
+  importe: number;
+  estado: EstadoVenta;
+  fecha: string;
 }
 
-// Overlay "Registrar venta" (P-10/MCP-37). `clienteId` siempre llega ya
-// resuelto: desde la ficha viene fijado por la ruta, y desde Hoy/Ventas lo
-// resuelve antes ClientPickerFlow. `estado` usa ChipGroup con un valor
-// inicial ("oportunidad") — como ChipGroup permite deseleccionar con
-// reclick, un `null` accidental se trata como inválido en la validación de
-// submit (igual que el email en ClienteForm), en vez de modificar el componente.
-export function VentaForm({ clienteId, onSaved, onCancel }: VentaFormProps) {
-  const [concepto, setConcepto] = useState("");
-  const [importe, setImporte] = useState("");
-  const [estado, setEstado] = useState<EstadoVenta | null>("oportunidad");
-  const [fecha, setFecha] = useState(() => todayISO());
+type VentaFormProps =
+  | { mode: "create"; clienteId: Id<"contacts">; onSaved: () => void; onCancel: () => void }
+  | { mode: "edit"; venta: VentaEditData; onSaved: () => void; onCancel: () => void };
+
+// Overlay "Registrar venta" / "Editar venta" (P-10/MCP-37, edición añadida
+// después). `clienteId` (modo create) siempre llega ya resuelto: desde la
+// ficha viene fijado por la ruta, y desde Hoy/Ventas lo resuelve antes
+// ClientPickerFlow. `estado` usa ChipGroup con un valor inicial
+// ("oportunidad" en alta, el valor guardado en edición) — como ChipGroup
+// permite deseleccionar con reclick, un `null` accidental se trata como
+// inválido en la validación de submit (igual que el email en ClienteForm),
+// en vez de modificar el componente.
+export function VentaForm(props: VentaFormProps) {
+  const initial = props.mode === "edit" ? props.venta : undefined;
+
+  const [concepto, setConcepto] = useState(initial?.concepto ?? "");
+  const [importe, setImporte] = useState(initial ? String(initial.importe) : "");
+  const [estado, setEstado] = useState<EstadoVenta | null>(initial?.estado ?? "oportunidad");
+  const [fecha, setFecha] = useState(() => initial?.fecha ?? todayISO());
 
   const [triedSave, setTriedSave] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [mutationError, setMutationError] = useState<string | null>(null);
 
   const createVenta = useMutation(api.ventas.create);
+  const updateVenta = useMutation(api.ventas.update);
 
   const conceptoValid = concepto.trim().length > 0;
   const importeNumber = Number(importe);
@@ -55,14 +66,24 @@ export function VentaForm({ clienteId, onSaved, onCancel }: VentaFormProps) {
 
     setSubmitting(true);
     try {
-      await createVenta({
-        clienteId,
-        concepto: concepto.trim(),
-        importe: importeNumber,
-        estado,
-        fecha,
-      });
-      onSaved();
+      if (props.mode === "create") {
+        await createVenta({
+          clienteId: props.clienteId,
+          concepto: concepto.trim(),
+          importe: importeNumber,
+          estado,
+          fecha,
+        });
+      } else {
+        await updateVenta({
+          id: props.venta.id,
+          concepto: concepto.trim(),
+          importe: importeNumber,
+          estado,
+          fecha,
+        });
+      }
+      props.onSaved();
     } catch {
       setMutationError("No se pudo guardar la venta. Inténtalo de nuevo.");
     } finally {
@@ -115,7 +136,7 @@ export function VentaForm({ clienteId, onSaved, onCancel }: VentaFormProps) {
       />
 
       <div className="mt-2 flex gap-3">
-        <Button type="button" variant="secondary" className="flex-none" onClick={onCancel}>
+        <Button type="button" variant="secondary" className="flex-none" onClick={props.onCancel}>
           Cancelar
         </Button>
         <Button type="submit" variant="primary" loading={submitting} className="flex-1">
