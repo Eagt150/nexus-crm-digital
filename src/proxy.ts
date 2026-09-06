@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-const CANONICAL_HOST = "crm-vibe.com";
+const CANONICAL_HOST = "www.crm-vibe.com";
 
 // El login con Google usa cookies propias de cada dominio (PKCE). Si alguien
 // empieza sesión en un dominio y Auth.js completa el flujo en otro (AUTH_URL
